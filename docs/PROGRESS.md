@@ -1,9 +1,9 @@
 # Project Progress
 
 ## Current State
-**Phase**: Phase 3 — Room Content (Ready to Start)
+**Phase**: Phase 4 — Progression System (Ready to Start)
 **Status**: In Progress  
-**Last Updated**: 2026-05-19T17:45:00Z  
+**Last Updated**: 2026-05-19T18:15:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Completed Tasks
@@ -61,21 +61,45 @@
 - NPC/contributor profiles (guest NPCs with dialogue).
 - Interactive content hooks for Phase 4 progression integration.
 
-## 🔄 Phase 3: Room Content (Ready to Start)
+### ✅ Phase 3: Room Content (Complete)
+**Built**
+- Room Info Panel with 4 tabs: Overview (stats, description), README excerpt, top-level file tree, top 5 contributors with avatars.
+- GitHub API integration for async repo data loading (README, file tree, contributors).
+- Visited stamp system with localStorage persistence (per-username).
+- Visual visited indicators on minimap and full-map overlays (blue checkmark, reduced opacity).
+- Data caching in GameContext (max 50 entries, LRU eviction).
+- Keyboard accessibility (Escape to close, Tab navigation).
+- WCAG AA color contrast and semantic HTML.
+
+**Tests/Checks Passed**
+- `npm run lint` ✓
+- `npm run typecheck` ✓
+- `npm run test -- --run` ✓ (70 tests, all passing)
+- `npm run build:web` ✓
+
+**Next Phase Requires**
+- Character class selection screen (4 classes).
+- XP and level system (room entry, info panel open, GitHub visit).
+- Loot generation (repo property-based).
+- Badge system and profile hub.
+
+## 🔄 Phase 4: Progression System (Ready to Start)
 
 - [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
   - Files: `src/game/entities/Player.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/config/gameConfig.ts`, `src/game/scenes/BootScene.ts`, `tests/dungeon-scene.test.ts`
 - [x] Phase 2, Task 2.3–2.4: Build minimap HUD and full-map overlay UI with GameContext integration (`ui-experience-engineer`) [model: default]
   - Files: `src/ui/context/GameContext.tsx`, `src/ui/components/Minimap.tsx`, `src/ui/components/FullMapOverlay.tsx`, `src/ui/styles/map.css`, `tests/minimap.test.tsx`, `tests/full-map-overlay.test.tsx`, `tests/game-context.test.tsx`
 
+- [x] Phase 3, Task 3.1–3.2: Build room info panel with GitHub data loading and visited stamp persistence (`ui-experience-engineer`) [model: default]
+  - Files: `src/ui/components/RoomInfoPanel.tsx`, `src/ui/systems/VisitedStamps.ts`, `src/ui/styles/room-info.css`, `tests/room-info-panel.test.tsx`, `tests/visited-stamps.test.ts`
+
 ## Current Task
-- [ ] Phase 3, Task 3.1–3.2: Build room info panel and NPC/contributor profiles (`ui-experience-engineer`) [model: default]
+- [ ] Phase 4, Task 4.1–4.3: Implement character class selection, XP system, and progression tracking (`progression-rewards-engineer`) [model: default]
   - Status: Ready / not started
-  - Notes: Player movement and map UI complete; ready for room interaction content.
+  - Notes: Room content is interactive; progression mechanics can now be layered on top.
 
 ## Remaining
-- [ ] Complete Phase 3 room content deliverables.
-- [ ] Phase 4: Progression System.
+- [ ] Complete Phase 4 progression deliverables.
 - [ ] Phase 5: Polish & Biomes.
 - [ ] Phase 6: Desktop & Release hardening.
 
@@ -83,7 +107,6 @@
 - None
 
 ## Notes
-- Latest completed Phase 2 implementation commits: phaser-gameplay-engineer (DungeonScene + Player) + ui-experience-engineer (Minimap + FullMapOverlay + GameContext).
-- Tech stack verified and stable (Phaser 3.55, React 18, Vite 4).
-- All tests passing (26 game tests + 52 UI tests = 78 total).
-- Phase 2 complete and ready to transition to Phase 3.
+- Phase 3 implementation complete: Room Info Panel with GitHub API integration + visited stamps with localStorage.
+- 70 tests passing total (26 game + 52 UI + 12 visited stamps).
+- Ready to transition to Phase 4: progression mechanics (XP, loot, badges, character classes).
