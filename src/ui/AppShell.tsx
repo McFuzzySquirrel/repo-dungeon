@@ -12,22 +12,42 @@ import { AudioControls } from '@/ui/components/AudioControls';
 import { GamePolishOverlay } from '@/ui/components/GamePolishOverlay';
 import { WelcomeScreen } from '@/ui/components/WelcomeScreen';
 import { HelpOverlay } from '@/ui/components/HelpOverlay';
+import { XpHud } from '@/ui/components/XpHud';
 import { decodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
 import { useSessionStore } from '@/store/sessionStore';
 import { useDungeonStore } from '@/store/dungeonStore';
+import type { GitHubRepoSummary } from '@/github/types';
 import '@/ui/styles/help-overlay.css';
+
+interface RestartableScene {
+  scene: { restart: (data: { repos: GitHubRepoSummary[]; username?: string; seed?: string }) => void };
+}
 
 export function AppShell() {
   const hostRef = useRef<HTMLDivElement | null>(null);
+  const gameRef = useRef<Phaser.Game | null>(null);
   const [game, setGame] = useState<Phaser.Game | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
+  const dungeonSeed = useDungeonStore((state) => state.seed);
   const setSeed = useDungeonStore((state) => state.setSeed);
 
   const openHelp = useCallback(() => setShowHelp(true), []);
   const closeHelp = useCallback(() => setShowHelp(false), []);
   const handleStart = useCallback(() => setShowWelcome(false), []);
+
+  const restartDungeonWithRepos = useCallback((repos: GitHubRepoSummary[], username: string) => {
+    const g = gameRef.current;
+    if (!g) return;
+    const scene = g.scene.getScene('DungeonScene') as unknown as RestartableScene | null;
+    scene?.scene.restart({ repos, username, seed: dungeonSeed ?? undefined });
+  }, [dungeonSeed]);
+
+  const handleLoadAndStart = useCallback((repos: GitHubRepoSummary[], username: string) => {
+    restartDungeonWithRepos(repos, username);
+    setShowWelcome(false);
+  }, [restartDungeonWithRepos]);
 
   useEffect(() => {
     if (!hostRef.current) {
@@ -35,8 +55,10 @@ export function AppShell() {
     }
 
     const newGame = createGame(hostRef.current);
+    gameRef.current = newGame;
     setGame(newGame);
     return () => {
+      gameRef.current = null;
       newGame.destroy(true);
     };
   }, []);
@@ -80,6 +102,7 @@ export function AppShell() {
             <InventoryPanel />
             <AudioControls />
             <GamePolishOverlay />
+            <XpHud />
             <button
               className="help-hud-btn"
               onClick={openHelp}
@@ -91,7 +114,7 @@ export function AppShell() {
           </>
         )}
         {showWelcome && (
-          <WelcomeScreen onStart={handleStart} onHelp={openHelp} />
+          <WelcomeScreen onStart={handleStart} onLoadAndStart={handleLoadAndStart} onHelp={openHelp} />
         )}
         {showHelp && <HelpOverlay onClose={closeHelp} />}
         <p className="overlay">Repo Dungeon</p>

@@ -2,11 +2,15 @@ export interface ShareableDungeonState {
   username: string;
   seed?: string;
   roomId?: string;
+  level?: number;
+  badgeCount?: number;
 }
 
 interface EncodedSharePayload {
   seed?: string;
   roomId?: string;
+  level?: number;
+  badgeCount?: number;
 }
 
 function toBase64Url(value: string): string {
@@ -34,6 +38,12 @@ export function encodeShareableDungeonUrl(state: ShareableDungeonState, baseUrl:
   }
   if (state.roomId) {
     payload.roomId = state.roomId;
+  }
+  if (state.level && state.level > 1) {
+    payload.level = state.level;
+  }
+  if (state.badgeCount && state.badgeCount > 0) {
+    payload.badgeCount = state.badgeCount;
   }
 
   if (Object.keys(payload).length > 0) {
@@ -63,6 +73,8 @@ export function decodeShareableDungeonUrl(urlValue: string): ShareableDungeonSta
       username,
       seed: payload.seed,
       roomId: payload.roomId,
+      level: payload.level,
+      badgeCount: payload.badgeCount,
     };
   } catch {
     return { username };

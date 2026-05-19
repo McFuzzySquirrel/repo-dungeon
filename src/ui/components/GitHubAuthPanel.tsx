@@ -1,3 +1,4 @@
+import { useProgressionStore } from '@/store/progressionStore';
 import { useState } from 'react';
 import { useGitHubAuth } from '@/ui/hooks/useGitHubAuth';
 import { useGitHubData } from '@/ui/hooks/useGitHubData';
@@ -20,6 +21,8 @@ export function GitHubAuthPanel() {
   const data = useGitHubData(auth.session?.accessToken);
   const [lastFetchError, setLastFetchError] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const level = useProgressionStore((s) => s.level);
+  const badgeCount = useProgressionStore((s) => s.unlockedBadges.length);
   const { game, dungeon, currentRoom } = useGameScene();
 
   function focusGameCanvas(): void {
@@ -94,6 +97,8 @@ export function GitHubAuthPanel() {
         username: usernameInput,
         seed: dungeon?.metadata.seed,
         roomId: currentRoom?.id,
+        level,
+        badgeCount,
       },
       window.location.href,
     );

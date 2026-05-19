@@ -3,6 +3,40 @@
  */
 
 import { create } from 'zustand';
+import { STORAGE_KEYS } from '@/store/persistence';
+
+interface PersistedProgression {
+  level: number;
+  totalXp: number;
+  xpTowardNextLevel: number;
+  inventory: LootItem[];
+  unlockedBadges: BadgeId[];
+  discoveryCount: number;
+  readmeCount: number;
+  githubLinkClicks: number;
+}
+
+function loadPersistedProgression(): Partial<PersistedProgression> {
+  try {
+    const raw = typeof localStorage !== 'undefined'
+      ? localStorage.getItem(STORAGE_KEYS.progression)
+      : null;
+    if (!raw) return {};
+    return JSON.parse(raw) as PersistedProgression;
+  } catch {
+    return {};
+  }
+}
+
+function saveProgression(state: PersistedProgression): void {
+  try {
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.progression, JSON.stringify(state));
+    }
+  } catch {
+    // storage unavailable — silently ignore
+  }
+}
 import type { PlayerClass } from '@/game/config/classes';
 import type { LootItem } from '@/game/systems/LootGenerator';
 import type { BadgeId } from '@/game/systems/BadgeTracker';
@@ -39,16 +73,18 @@ export interface ProgressionStoreState {
   reset: () => void;
 }
 
+const saved = loadPersistedProgression();
+
 const initialState = {
   selectedClass: null as PlayerClass | null,
-  level: 1,
-  totalXp: 0,
-  xpTowardNextLevel: 0,
-  inventory: [] as LootItem[],
-  unlockedBadges: [] as BadgeId[],
-  discoveryCount: 0,
-  readmeCount: 0,
-  githubLinkClicks: 0,
+  level: saved.level ?? 1,
+  totalXp: saved.totalXp ?? 0,
+  xpTowardNextLevel: saved.xpTowardNextLevel ?? 0,
+  inventory: saved.inventory ?? ([] as LootItem[]),
+  unlockedBadges: saved.unlockedBadges ?? ([] as BadgeId[]),
+  discoveryCount: saved.discoveryCount ?? 0,
+  readmeCount: saved.readmeCount ?? 0,
+  githubLinkClicks: saved.githubLinkClicks ?? 0,
 };
 
 export const useProgressionStore = create<ProgressionStoreState>((set) => ({
@@ -97,5 +133,26 @@ export const useProgressionStore = create<ProgressionStoreState>((set) => ({
 
   setBadges: (badges) => set({ unlockedBadges: badges }),
 
-  reset: () => set(initialState),
+  reset: () => {
+    set(initialState);
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.removeItem(STORAGE_KEYS.progression);
+      }
+    } catch { /* ignore */ }
+  },
 }));
+
+// Persist to localStorage on every relevant state change
+useProgressionStore.subscribe((state) => {
+  saveProgression({
+    level: state.level,
+    totalXp: state.totalXp,
+    xpTowardNextLevel: state.xpTowardNextLevel,
+    inventory: state.inventory,
+    unlockedBadges: state.unlockedBadges,
+    discoveryCount: state.discoveryCount,
+    readmeCount: state.readmeCount,
+    githubLinkClicks: state.githubLinkClicks,
+  });
+});

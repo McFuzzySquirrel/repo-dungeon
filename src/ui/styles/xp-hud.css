@@ -1,0 +1,80 @@
+/* XP / Level HUD — fixed bottom-left */
+
+.xp-hud {
+  position: fixed;
+  bottom: 16px;
+  left: 16px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(10, 16, 28, 0.88);
+  border: 1px solid rgba(99, 245, 255, 0.22);
+  border-radius: 8px;
+  padding: 0.4rem 0.65rem;
+  z-index: 400;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+  pointer-events: none; /* purely display */
+}
+
+.xp-hud-level {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 32px;
+  line-height: 1;
+}
+
+.xp-hud-level-label {
+  font-family: monospace;
+  font-size: 0.55rem;
+  color: #6a8aa0;
+  letter-spacing: 0.08em;
+}
+
+.xp-hud-level-value {
+  font-family: monospace;
+  font-size: 1.15rem;
+  font-weight: 900;
+  color: #63f5ff;
+  line-height: 1.1;
+  text-shadow: 0 0 8px rgba(99, 245, 255, 0.6);
+}
+
+.xp-hud-bar-col {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 90px;
+}
+
+.xp-hud-bar-track {
+  height: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.xp-hud-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2a8aff 0%, #63f5ff 100%);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+  box-shadow: 0 0 6px rgba(99, 245, 255, 0.5);
+}
+
+.xp-hud-stats {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.xp-hud-stats span {
+  font-family: monospace;
+  font-size: 0.65rem;
+  color: #6a8aa0;
+  white-space: nowrap;
+}
+
+.xp-hud-badges {
+  color: #f7c06d !important;
+}
