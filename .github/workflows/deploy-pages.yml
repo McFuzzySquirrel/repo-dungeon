@@ -45,6 +45,9 @@ jobs:
       - name: Build Vite app
         env:
           VITE_BASE_PATH: /repo-dungeon/
+          VITE_GITHUB_CLIENT_ID: ${{ vars.VITE_GITHUB_CLIENT_ID || '' }}
+          VITE_GITHUB_REDIRECT_URI: ${{ vars.VITE_GITHUB_REDIRECT_URI || '' }}
+          VITE_GITHUB_TOKEN_EXCHANGE_URL: ${{ vars.VITE_GITHUB_TOKEN_EXCHANGE_URL || '' }}
         run: npm run build:web
       - run: npm run check:bundle-size
       - uses: actions/upload-pages-artifact@v3

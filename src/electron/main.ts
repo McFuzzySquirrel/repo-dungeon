@@ -7,6 +7,21 @@ import {
   setSecureStorageItem,
 } from './secureStorage.js';
 
+interface GitHubOAuthExchangePayload {
+  clientId: string;
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+}
+
+interface OAuthTokenResponse {
+  access_token?: string;
+  token_type?: string;
+  scope?: string;
+  error?: string;
+  error_description?: string;
+}
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -28,6 +43,43 @@ function registerSecureStorageHandlers(): void {
     setSecureStorageItem(key, value),
   );
   ipcMain.handle('secure-storage:remove-item', (_event, key: string) => removeSecureStorageItem(key));
+}
+
+function registerGitHubOAuthHandlers(): void {
+  ipcMain.handle('github-oauth:exchange-code', (_event, payload: GitHubOAuthExchangePayload) =>
+    exchangeGitHubOAuthCode(payload),
+  );
+}
+
+async function exchangeGitHubOAuthCode(
+  payload: GitHubOAuthExchangePayload,
+): Promise<OAuthTokenResponse> {
+  const clientSecret = process.env.GITHUB_CLIENT_SECRET;
+  if (!clientSecret) {
+    throw new Error('Missing GITHUB_CLIENT_SECRET environment variable for Electron OAuth exchange.');
+  }
+
+  const response = await fetch('https://github.com/login/oauth/access_token', {
+    method: 'POST',
+    headers: {
+      Accept: 'application/json',
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      client_id: payload.clientId,
+      client_secret: clientSecret,
+      code: payload.code,
+      code_verifier: payload.codeVerifier,
+      redirect_uri: payload.redirectUri,
+    }),
+  });
+
+  if (!response.ok) {
+    const responseText = await response.text();
+    throw new Error(responseText || `OAuth token exchange failed (${response.status}).`);
+  }
+
+  return (await response.json()) as OAuthTokenResponse;
 }
 
 async function createMainWindow(): Promise<void> {
@@ -70,6 +122,7 @@ async function createMainWindow(): Promise<void> {
 
 void app.whenReady().then(async () => {
   registerSecureStorageHandlers();
+  registerGitHubOAuthHandlers();
   await createMainWindow();
 
   app.on('activate', () => {

@@ -8,6 +8,7 @@
   "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
+    "auth:proxy": "node scripts/github-oauth-proxy.mjs",
     "build": "tsc -b && vite build",
     "build:web": "npm run build",
     "build:web:profile": "vite build --mode profile",

@@ -1,22 +1,24 @@
 import { useCallback, useState } from 'react';
-import { useGitHubAuth } from '@/ui/hooks/useGitHubAuth';
+import type { UseGitHubAuthResult } from '@/ui/hooks/useGitHubAuth';
 import { useGitHubData } from '@/ui/hooks/useGitHubData';
 import { useSessionStore } from '@/store/sessionStore';
 import type { GitHubRepoSummary } from '@/github/types';
 import '@/ui/styles/welcome-screen.css';
 
 interface WelcomeScreenProps {
+  auth: UseGitHubAuthResult;
   onStart: () => void;
   onLoadAndStart: (repos: GitHubRepoSummary[], username: string) => void;
   onHelp: () => void;
 }
 
-export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreenProps) {
+export function WelcomeScreen({ auth, onStart, onLoadAndStart, onHelp }: WelcomeScreenProps) {
   const usernameInput = useSessionStore((state) => state.usernameInput);
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
-  const auth = useGitHubAuth();
   const data = useGitHubData(auth.session?.accessToken);
   const [fetchError, setFetchError] = useState<string | null>(null);
+  const authenticatedUsername = auth.user?.login ?? usernameInput.trim();
+  const isAuthenticated = auth.status === 'authenticated' && authenticatedUsername.length > 0;
 
   const handlePublicLoad = useCallback(async () => {
     setFetchError(null);
@@ -60,7 +62,40 @@ export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreen
 
         {/* GitHub connection section */}
         <div className="welcome-github-section" aria-label="GitHub connection">
-          <p className="welcome-github-label">Load your GitHub repositories</p>
+          <p className="welcome-github-label">
+            {isAuthenticated ? 'Continue with your GitHub account' : 'Load your GitHub repositories'}
+          </p>
+
+          {auth.status === 'loading' ? (
+            <p className="welcome-load-progress" role="status" aria-live="polite">
+              Checking GitHub session…
+            </p>
+          ) : null}
+
+          {isAuthenticated ? (
+            <div className="welcome-auth-panel">
+              <div className="welcome-auth-row">
+                <span className="welcome-auth-badge">✓ {authenticatedUsername}</span>
+                <div className="welcome-auth-actions">
+                  <button
+                    className="welcome-btn welcome-btn--load"
+                    onClick={() => void handleAuthLoad()}
+                    disabled={isLoading}
+                  >
+                    {isLoading ? '⏳ Loading…' : `Continue as ${authenticatedUsername}`}
+                  </button>
+                  <button
+                    className="welcome-btn welcome-btn--ghost"
+                    onClick={() => void auth.logout()}
+                  >
+                    Logout
+                  </button>
+                </div>
+              </div>
+              <p className="welcome-auth-hint">Or load public repositories for a different account below.</p>
+            </div>
+          ) : null}
+
           <div className="welcome-github-row">
             <input
               className="welcome-username-input"
@@ -74,7 +109,7 @@ export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreen
               }}
               aria-label="GitHub username"
               autoComplete="off"
-              autoFocus
+              autoFocus={!isAuthenticated}
             />
             <button
               className="welcome-btn welcome-btn--load"
@@ -91,33 +126,17 @@ export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreen
             </p>
           )}
 
-          {auth.status === 'authenticated' ? (
-            <div className="welcome-auth-row">
-              <span className="welcome-auth-badge">✓ {auth.user?.login}</span>
-              <button
-                className="welcome-btn welcome-btn--ghost"
-                onClick={() => void handleAuthLoad()}
-                disabled={isLoading}
-              >
-                Load My Repos
-              </button>
-              <button
-                className="welcome-btn welcome-btn--ghost"
-                onClick={() => void auth.logout()}
-              >
-                Logout
-              </button>
-            </div>
-          ) : (
+          {auth.status !== 'loading' && !isAuthenticated ? (
             <button
-              className="welcome-btn welcome-btn--ghost"
+              className="welcome-btn welcome-btn--ghost welcome-btn--github-login"
               onClick={() => void auth.beginLogin()}
-              disabled={isLoading}
+              disabled={isLoading || auth.status === 'loading'}
             >
               🔑 Login with GitHub (private repos + higher rate limits)
             </button>
-          )}
+          ) : null}
 
+          {auth.errorMessage && <p className="welcome-error" role="alert">{auth.errorMessage}</p>}
           {fetchError && <p className="welcome-error" role="alert">{fetchError}</p>}
         </div>
 

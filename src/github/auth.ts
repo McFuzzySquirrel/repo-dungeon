@@ -19,6 +19,14 @@ interface OAuthTokenResponse {
   error_description?: string;
 }
 
+export interface OAuthCodeExchangeOptions {
+  clientId: string;
+  code: string;
+  codeVerifier: string;
+  redirectUri: string;
+  exchangeUrl?: string;
+}
+
 export interface TokenStorageAdapter {
   getItem: (key: string) => Promise<string | null>;
   setItem: (key: string, value: string) => Promise<void>;
@@ -41,9 +49,14 @@ interface ElectronSecureStorageApi {
   removeItem: (key: string) => Promise<void>;
 }
 
+interface ElectronGitHubOAuthApi {
+  exchangeCode: (options: OAuthCodeExchangeOptions) => Promise<OAuthTokenResponse>;
+}
+
 declare global {
   interface Window {
     electronSecureStorage?: ElectronSecureStorageApi;
+    electronGitHubOAuth?: ElectronGitHubOAuthApi;
   }
 }
 
@@ -152,6 +165,7 @@ export async function completeGitHubOAuthFromUrl(
     code,
     codeVerifier,
     redirectUri: import.meta.env.VITE_GITHUB_REDIRECT_URI ?? window.location.origin,
+    exchangeUrl: import.meta.env.VITE_GITHUB_TOKEN_EXCHANGE_URL,
   });
 
   if (!tokenResponse.access_token) {
@@ -192,15 +206,35 @@ async function fetchToken(options: {
   code: string;
   codeVerifier: string;
   redirectUri: string;
+  exchangeUrl?: string;
 }): Promise<OAuthTokenResponse> {
-  const response = await fetch('https://github.com/login/oauth/access_token', {
+  return exchangeGitHubOAuthCode(options);
+}
+
+export async function exchangeGitHubOAuthCode(options: OAuthCodeExchangeOptions): Promise<OAuthTokenResponse> {
+  if (typeof window !== 'undefined' && window.electronGitHubOAuth) {
+    return window.electronGitHubOAuth.exchangeCode(options);
+  }
+
+  if (options.exchangeUrl) {
+    return fetchTokenFromExchangeEndpoint(options.exchangeUrl, options);
+  }
+
+  throw new Error('GitHub OAuth code exchange is not configured for this build.');
+}
+
+async function fetchTokenFromExchangeEndpoint(
+  exchangeUrl: string,
+  options: OAuthCodeExchangeOptions,
+): Promise<OAuthTokenResponse> {
+  const response = await fetch(exchangeUrl, {
     method: 'POST',
     headers: {
       Accept: 'application/json',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      client_id: options.clientId,
+      clientId: options.clientId,
       code: options.code,
       code_verifier: options.codeVerifier,
       redirect_uri: options.redirectUri,
@@ -208,7 +242,8 @@ async function fetchToken(options: {
   });
 
   if (!response.ok) {
-    throw new Error(`OAuth token exchange failed (${response.status}).`);
+    const responseText = await response.text();
+    throw new Error(responseText || `OAuth token exchange failed (${response.status}).`);
   }
 
   return (await response.json()) as OAuthTokenResponse;
