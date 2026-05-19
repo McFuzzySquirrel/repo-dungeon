@@ -3,7 +3,7 @@
 ## Current State
 **Phase**: Phase 6 — Desktop & Release hardening (Complete)
 **Status**: Complete  
-**Last Updated**: 2026-05-19T17:30:53Z  
+**Last Updated**: 2026-05-19T17:34:36Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Completed Tasks
@@ -19,6 +19,18 @@
   - Files: `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`
 - [x] Phase 2, Task 2.1: Implement deterministic BSP dungeon generator, zone grouping, room mapping, corridor/gateway connectivity (`dungeon-generation-engineer`) [model: default]
   - Files: `src/game/systems/DungeonGenerator.ts`, `src/game/systems/dungeonTypes.ts`, `src/game/config/biomes.ts`, `tests/dungeon-generator.test.ts`
+- [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
+  - Files: `src/game/entities/Player.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/config/gameConfig.ts`, `src/game/scenes/BootScene.ts`, `tests/dungeon-scene.test.ts`
+- [x] Phase 2, Task 2.3–2.4: Build minimap HUD and full-map overlay UI with GameContext integration (`ui-experience-engineer`) [model: default]
+  - Files: `src/ui/context/GameContext.tsx`, `src/ui/components/Minimap.tsx`, `src/ui/components/FullMapOverlay.tsx`, `src/ui/styles/map.css`, `tests/minimap.test.tsx`, `tests/full-map-overlay.test.tsx`, `tests/game-context.test.tsx`
+- [x] Phase 3, Task 3.1–3.2: Build room info panel with GitHub data loading and visited stamp persistence (`ui-experience-engineer`) [model: default]
+  - Files: `src/ui/components/RoomInfoPanel.tsx`, `src/ui/systems/VisitedStamps.ts`, `src/ui/styles/room-info.css`, `tests/room-info-panel.test.tsx`, `tests/visited-stamps.test.ts`
+- [x] Phase 4, Task 4.1–4.3: Implement character classes, XP progression, loot generation, badges, inventory/profile overlays (`progression-rewards-engineer`) [model: default]
+  - Files: `src/game/config/classes.ts`, `src/game/systems/ProgressionTracker.ts`, `src/game/systems/LootGenerator.ts`, `src/game/systems/BadgeTracker.ts`, `src/store/progressionStore.ts`, `src/ui/components/CharacterSelect.tsx`, `src/ui/components/LevelUpOverlay.tsx`, `src/ui/components/BadgeUnlockOverlay.tsx`, `src/ui/components/InventoryPanel.tsx`, `src/ui/components/ProfileRoom.tsx`, `src/ui/hooks/useProgression.ts`, `tests/progression-tracker.test.ts`, `tests/loot-generator.test.ts`, `tests/badge-tracker.test.ts`, `tests/character-select.test.tsx`, `tests/inventory-panel.test.tsx`, `src/ui/AppShell.tsx`
+- [x] Phase 5, Task 5.1–5.3: Biome polish, NPC/object interaction scaffolding, ambient hooks, tutorial/share-url support (`world-content-engineer`) [model: default]
+  - Files: `src/game/config/biomePresentation.ts`, `src/game/entities/NPCContributor.ts`, `src/game/entities/RoomObject.ts`, `src/game/entities/roomContent.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/audio/audioSettings.ts`, `src/ui/components/AudioControls.tsx`, `src/ui/components/GamePolishOverlay.tsx`, `src/ui/context/GameContext.tsx`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/shareUrl.ts`, `src/ui/AppShell.tsx`, `tests/biome-presentation.test.ts`, `tests/room-content.test.ts`, `tests/share-url.test.ts`, `public/assets/CREDITS.md`
+- [x] Phase 6, Task 6.1–6.4: Desktop packaging, cross-browser/perf/accessibility audits, release hardening (`release-infra-engineer`) [model: default]
+  - Files: `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`, `.github/workflows/release-desktop.yml`, `electron-builder.config.js`, `vite.config.ts`, `scripts/check-bundle-size.mjs`, `src/electron/main.ts`, `src/electron/secureStorage.ts`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/clipboard.ts`, `src/styles.css`, `README.md`, `package.json`, `package-lock.json`, `eslint.config.js`
 
 ## Phase Summaries
 
@@ -141,22 +153,10 @@
 - `npm run check:bundle-size` ✓
 - `npm run package:electron` ✓ (linux unpacked artifact)
 
-- [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
-  - Files: `src/game/entities/Player.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/config/gameConfig.ts`, `src/game/scenes/BootScene.ts`, `tests/dungeon-scene.test.ts`
-- [x] Phase 2, Task 2.3–2.4: Build minimap HUD and full-map overlay UI with GameContext integration (`ui-experience-engineer`) [model: default]
-  - Files: `src/ui/context/GameContext.tsx`, `src/ui/components/Minimap.tsx`, `src/ui/components/FullMapOverlay.tsx`, `src/ui/styles/map.css`, `tests/minimap.test.tsx`, `tests/full-map-overlay.test.tsx`, `tests/game-context.test.tsx`
-
-- [x] Phase 3, Task 3.1–3.2: Build room info panel with GitHub data loading and visited stamp persistence (`ui-experience-engineer`) [model: default]
-  - Files: `src/ui/components/RoomInfoPanel.tsx`, `src/ui/systems/VisitedStamps.ts`, `src/ui/styles/room-info.css`, `tests/room-info-panel.test.tsx`, `tests/visited-stamps.test.ts`
-- [x] Phase 4, Task 4.1–4.3: Implement character classes, XP progression, loot generation, badges, inventory/profile overlays (`progression-rewards-engineer`) [model: default]
-  - Files: `src/game/config/classes.ts`, `src/game/systems/ProgressionTracker.ts`, `src/game/systems/LootGenerator.ts`, `src/game/systems/BadgeTracker.ts`, `src/store/progressionStore.ts`, `src/ui/components/CharacterSelect.tsx`, `src/ui/components/LevelUpOverlay.tsx`, `src/ui/components/BadgeUnlockOverlay.tsx`, `src/ui/components/InventoryPanel.tsx`, `src/ui/components/ProfileRoom.tsx`, `src/ui/hooks/useProgression.ts`, `tests/progression-tracker.test.ts`, `tests/loot-generator.test.ts`, `tests/badge-tracker.test.ts`, `tests/character-select.test.tsx`, `tests/inventory-panel.test.tsx`, `src/ui/AppShell.tsx`
-- [x] Phase 5, Task 5.1–5.3: Biome polish, NPC/object interaction scaffolding, ambient hooks, tutorial/share-url support (`world-content-engineer`) [model: default]
-  - Files: `src/game/config/biomePresentation.ts`, `src/game/entities/NPCContributor.ts`, `src/game/entities/RoomObject.ts`, `src/game/entities/roomContent.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/audio/audioSettings.ts`, `src/ui/components/AudioControls.tsx`, `src/ui/components/GamePolishOverlay.tsx`, `src/ui/context/GameContext.tsx`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/shareUrl.ts`, `src/ui/AppShell.tsx`, `tests/biome-presentation.test.ts`, `tests/room-content.test.ts`, `tests/share-url.test.ts`, `public/assets/CREDITS.md`
-
 ## Current Task
-- [x] Phase 6, Task 6.1–6.4: Desktop packaging, cross-browser/perf/accessibility audits, release hardening (`release-infra-engineer`) [model: default]
+- [ ] None (project complete)
   - Status: Complete
-  - Notes: Implemented in commit `3e4f061`.
+  - Notes: All PRD phases (1–6) are completed.
 
 ## Remaining
 - [ ] None.
