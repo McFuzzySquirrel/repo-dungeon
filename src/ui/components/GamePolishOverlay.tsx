@@ -4,10 +4,37 @@ import {
   useOnRoomObjectInteracted,
   useOnTutorialUpdated,
 } from '@/ui/context/GameContext';
+import { useProgressionStore } from '@/store/progressionStore';
+import type { LootItem } from '@/game/systems/LootGenerator';
+
+function createLootFromRoomObject(event: {
+  roomId: string;
+  roomName: string;
+  objectType: 'readme-scroll' | 'file-tree-archive' | 'contributors-gallery';
+  title: string;
+  description: string;
+}): LootItem {
+  const rarityByObjectType: Record<typeof event.objectType, LootItem['rarity']> = {
+    'readme-scroll': 'common',
+    'file-tree-archive': 'uncommon',
+    'contributors-gallery': 'uncommon',
+  };
+
+  return {
+    id: `loot-${event.roomId}-${event.objectType}-${Date.now()}`,
+    name: event.title,
+    rarity: rarityByObjectType[event.objectType],
+    repo: event.roomName,
+    repoUrl: '',
+    description: event.description,
+    timestamp: Date.now(),
+  };
+}
 
 export function GamePolishOverlay() {
   const [tutorialText, setTutorialText] = useState<string | null>(null);
   const [interactionText, setInteractionText] = useState<string | null>(null);
+  const addLoot = useProgressionStore((state) => state.addLoot);
 
   useOnTutorialUpdated(
     useCallback((event) => {
@@ -28,22 +55,32 @@ export function GamePolishOverlay() {
 
   useOnRoomObjectInteracted(
     useCallback((event) => {
+      addLoot(createLootFromRoomObject(event));
       setInteractionText(`${event.title} activated.`);
       window.setTimeout(() => {
         setInteractionText(null);
       }, 1400);
-    }, []),
+    }, [addLoot]),
   );
 
   useOnContributorInteracted(
     useCallback((event) => {
+      addLoot({
+        id: `loot-${event.roomId}-contributor-${event.contributor.id}-${Date.now()}`,
+        name: `${event.contributor.login} Cache`,
+        rarity: event.contributor.contributions > 20 ? 'uncommon' : 'common',
+        repo: event.contributor.login,
+        repoUrl: '',
+        description: `Contributor bundle with ${event.contributor.contributions} contributions`,
+        timestamp: Date.now(),
+      });
       setInteractionText(
         `Contributor ${event.contributor.login} — ${event.contributor.contributions} contributions`,
       );
       window.setTimeout(() => {
         setInteractionText(null);
       }, 1800);
-    }, []),
+    }, [addLoot]),
   );
 
   if (!tutorialText && !interactionText) {

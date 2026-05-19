@@ -69,15 +69,6 @@ export class RoomObject extends Phaser.GameObjects.Container {
 
     if (!reducedMotion) {
       scene.tweens.add({
-        targets: [this, glow],
-        y: this.y - 5,
-        duration: 1450,
-        yoyo: true,
-        repeat: -1,
-        ease: 'Sine.easeInOut',
-      });
-
-      scene.tweens.add({
         targets: glow,
         alpha: { from: 0.12, to: 0.3 },
         duration: 950,

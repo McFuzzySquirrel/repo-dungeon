@@ -20,6 +20,10 @@ const BIOME_COLORS: Record<string, number> = {
 };
 
 const CORRIDOR_HALF_WIDTH = 18;
+const TILE_SURFACE_FILL_ALPHA = 0.08;
+const TILE_SURFACE_TEXTURE_ALPHA = 0.68;
+const TILE_SURFACE_ZONE_TILE_SCALE = 0.5;
+const TILE_SURFACE_ROOM_TILE_SCALE = 0.75;
 
 interface NavigationRegion {
   minX: number;
@@ -210,6 +214,20 @@ export class DungeonScene extends Phaser.Scene {
     for (const zone of this.dungeon.zones) {
       const color = BIOME_COLORS[zone.biome.id] || 0x3a3a3a;
       const presentation = getBiomePresentation(zone.biome.id);
+      if (this.textures.exists(presentation.tilesetTextureKey)) {
+        this.add
+          .tileSprite(
+            zone.bounds.x,
+            zone.bounds.y,
+            zone.bounds.width,
+            zone.bounds.height,
+            presentation.tilesetTextureKey,
+          )
+          .setOrigin(0)
+          .setTileScale(TILE_SURFACE_ZONE_TILE_SCALE)
+          .setAlpha(TILE_SURFACE_TEXTURE_ALPHA)
+          .setTilePosition(zone.bounds.x, zone.bounds.y);
+      }
       this.add
         .rectangle(
           zone.bounds.x + zone.bounds.width / 2,
@@ -217,17 +235,24 @@ export class DungeonScene extends Phaser.Scene {
           zone.bounds.width,
           zone.bounds.height,
           presentation.palette.floor,
-          0.2,
+          TILE_SURFACE_FILL_ALPHA,
         )
         .setStrokeStyle(2, color);
       this.decorateZone(zone, presentation.palette.accent);
 
       // Zone label
       this.add
-        .text(zone.bounds.x + 10, zone.bounds.y + 10, zone.label, {
-          color: '#ffffff',
+        .text(zone.bounds.x + 12, zone.bounds.y + 12, zone.label, {
+          color: '#f7edd7',
           fontFamily: 'monospace',
           fontSize: '12px',
+          backgroundColor: '#0c1018d9',
+          padding: {
+            x: 8,
+            y: 5,
+          },
+          stroke: '#000000',
+          strokeThickness: 3,
         })
         .setOrigin(0);
     }
@@ -243,25 +268,28 @@ export class DungeonScene extends Phaser.Scene {
       if (textureKey && this.textures.exists(textureKey)) {
         this.add
           .tileSprite(
-            room.position.x,
-            room.position.y,
+            room.position.x - room.size.width / 2,
+            room.position.y - room.size.height / 2,
             room.size.width,
             room.size.height,
             textureKey,
           )
-          .setAlpha(0.38);
+          .setOrigin(0)
+          .setTileScale(TILE_SURFACE_ROOM_TILE_SCALE)
+          .setAlpha(TILE_SURFACE_TEXTURE_ALPHA)
+          .setTilePosition(room.position.x - room.size.width / 2, room.position.y - room.size.height / 2);
       }
 
       // Room rectangle
       const graphics = this.add.graphics();
-      graphics.fillStyle(presentation?.palette.floor ?? color, 0.65);
+      graphics.fillStyle(presentation?.palette.floor ?? color, TILE_SURFACE_FILL_ALPHA);
       graphics.fillRect(
         room.position.x - room.size.width / 2,
         room.position.y - room.size.height / 2,
         room.size.width,
         room.size.height,
       );
-      graphics.lineStyle(2, presentation?.palette.accent ?? color, 1);
+      graphics.lineStyle(2, presentation?.palette.accent ?? color, 0.95);
       graphics.strokeRect(
         room.position.x - room.size.width / 2,
         room.position.y - room.size.height / 2,
@@ -277,14 +305,13 @@ export class DungeonScene extends Phaser.Scene {
         this.decorateRoom(room, presentation.placeholderPattern, presentation.palette.wall);
       }
 
-      // Room label/ID
-      this.add
-        .text(room.position.x, room.position.y - room.size.height / 2 - 15, room.name, {
-          color: '#ffffff',
-          fontFamily: 'monospace',
-          fontSize: '10px',
-        })
-        .setOrigin(0.5);
+      // Room signpost label
+      this.addRoomSignpost(
+        room.position.x,
+        room.position.y - room.size.height / 2,
+        room.name,
+        presentation?.palette.accent ?? color,
+      );
     }
 
     // Draw corridors
@@ -743,6 +770,59 @@ export class DungeonScene extends Phaser.Scene {
       const markerY = zone.bounds.y + zone.bounds.height - 16;
       this.add.circle(markerX, markerY, 2, color, 0.5);
     }
+  }
+
+  /**
+   * Draw a dungeon-style signpost (post + board) above a room.
+   */
+  private addRoomSignpost(
+    cx: number,
+    roomTopY: number,
+    label: string,
+    accentColor: number,
+  ): void {
+    // Approximate monospace 10 px character width; cap board width for very long names
+    const charW = 6.2;
+    const boardPadX = 9;
+    const boardPadY = 5;
+    const boardH = 10 + boardPadY * 2; // font-size + vertical padding
+    const boardW = Math.min(Math.max(label.length * charW + boardPadX * 2, 48), 160);
+    const postH = 14;
+    const postW = 4;
+
+    // Positions (all in world space)
+    const boardBottom = roomTopY - postH;
+    const boardTop = boardBottom - boardH;
+    const boardLeft = cx - boardW / 2;
+
+    const g = this.add.graphics();
+
+    // Post — biome-tinted thin pillar
+    g.fillStyle(accentColor, 0.55);
+    g.fillRect(cx - postW / 2, boardBottom, postW, postH);
+
+    // Subtle drop-shadow offset
+    g.fillStyle(0x000000, 0.35);
+    g.fillRect(boardLeft + 2, boardTop + 2, boardW, boardH);
+
+    // Board border (biome accent)
+    g.fillStyle(accentColor, 0.7);
+    g.fillRect(boardLeft - 1, boardTop - 1, boardW + 2, boardH + 2);
+
+    // Board fill — dark parchment
+    g.fillStyle(0x0e1420, 0.91);
+    g.fillRect(boardLeft, boardTop, boardW, boardH);
+
+    // Label text centred on board
+    this.add
+      .text(cx, boardTop + boardH / 2, label, {
+        color: '#f0e6cc',
+        fontFamily: 'monospace',
+        fontSize: '10px',
+        stroke: '#000000',
+        strokeThickness: 2,
+      })
+      .setOrigin(0.5, 0.5);
   }
 
   private decorateRoom(
