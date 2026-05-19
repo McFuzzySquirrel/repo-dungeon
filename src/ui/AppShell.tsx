@@ -5,6 +5,7 @@ import { GitHubAuthPanel } from '@/ui/components/GitHubAuthPanel';
 import { GameContextProvider } from '@/ui/context/GameContext';
 import { Minimap } from '@/ui/components/Minimap';
 import { FullMapOverlay } from '@/ui/components/FullMapOverlay';
+import { RoomInfoPanel } from '@/ui/components/RoomInfoPanel';
 
 export function AppShell() {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -28,8 +29,9 @@ export function AppShell() {
         <div className="game-root" ref={hostRef} />
         <Minimap />
         <FullMapOverlay />
+        <RoomInfoPanel />
         <GitHubAuthPanel />
-        <p className="overlay">Repo Dungeon — Phase 2 Map Systems</p>
+        <p className="overlay">Repo Dungeon — Phase 3 Room Info Panel</p>
       </main>
     </GameContextProvider>
   );

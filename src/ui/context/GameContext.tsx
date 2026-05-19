@@ -1,7 +1,8 @@
-import { createContext, useContext, useEffect, useRef, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, ReactNode, useCallback } from 'react';
 import Phaser from 'phaser';
 import type { DungeonMap, DungeonRoomNode, DungeonZone } from '@/game/systems/dungeonTypes';
 import type { PlayerState } from '@/game/entities/Player';
+import type { GitHubRoomData } from '@/github/types';
 
 /**
  * Event types emitted by DungeonScene
@@ -27,6 +28,9 @@ export interface GameContextType {
   playerState: PlayerState | null;
   currentRoom: DungeonRoomNode | null;
   isReady: boolean;
+  roomDetailsCache: Map<string, GitHubRoomData>;
+  cacheRoomDetails: (roomId: string, data: GitHubRoomData) => void;
+  getRoomDetails: (roomId: string) => GitHubRoomData | undefined;
 }
 
 const GameContext = createContext<GameContextType | null>(null);
@@ -46,6 +50,21 @@ export function GameContextProvider({ game, children }: GameContextProviderProps
   const [currentRoom, setCurrentRoom] = useState<DungeonRoomNode | null>(null);
   const [isReady, setIsReady] = useState(false);
   const gameRef = useRef(game);
+  const roomDetailsCacheRef = useRef<Map<string, GitHubRoomData>>(new Map());
+
+  // Cache room details with LRU eviction (max 50 entries)
+  const cacheRoomDetails = useCallback((roomId: string, data: GitHubRoomData) => {
+    const cache = roomDetailsCacheRef.current;
+    if (cache.size >= 50) {
+      const firstKey = cache.keys().next().value;
+      if (firstKey) cache.delete(firstKey);
+    }
+    cache.set(roomId, data);
+  }, []);
+
+  const getRoomDetails = useCallback((roomId: string) => {
+    return roomDetailsCacheRef.current.get(roomId);
+  }, []);
 
   // Keep game reference up to date
   useEffect(() => {
@@ -115,6 +134,9 @@ export function GameContextProvider({ game, children }: GameContextProviderProps
     playerState,
     currentRoom,
     isReady,
+    roomDetailsCache: roomDetailsCacheRef.current,
+    cacheRoomDetails,
+    getRoomDetails,
   };
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;

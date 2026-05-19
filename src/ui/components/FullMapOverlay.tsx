@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameScene } from '@/ui/context/GameContext';
+import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import '@/ui/styles/map.css';
 
 const BIOME_COLORS: Record<string, string> = {
@@ -33,6 +34,13 @@ export function FullMapOverlay() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
+  const [visitedRooms, setVisitedRooms] = useState<Set<string>>(new Set());
+
+  // Get visited rooms
+  useEffect(() => {
+    const visited = getVisitedStampsSystem();
+    setVisitedRooms(new Set(visited.getVisitedRooms()));
+  }, []);
 
   // Handle M key to toggle
   useEffect(() => {
@@ -134,9 +142,12 @@ export function FullMapOverlay() {
       const roomWidth = room.size.width * scale;
       const roomHeight = room.size.height * scale;
 
+      // Check if room is visited
+      const isVisited = visitedRooms.has(room.id);
+
       // Room background
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.6;
+      ctx.globalAlpha = isVisited ? 0.3 : 0.6;
       ctx.fillRect(roomMinX, roomMinY, roomWidth, roomHeight);
 
       // Room border
@@ -144,6 +155,25 @@ export function FullMapOverlay() {
       ctx.strokeStyle = color;
       ctx.lineWidth = Math.max(1, 1.5 * scale);
       ctx.strokeRect(roomMinX, roomMinY, roomWidth, roomHeight);
+
+      // Visited stamp indicator
+      if (isVisited) {
+        ctx.fillStyle = 'rgba(74, 144, 226, 0.7)';
+        ctx.globalAlpha = 0.8;
+        const stampSize = Math.max(4, scale * 4);
+        ctx.fillRect(roomMinX + roomWidth - stampSize - 1, roomMinY + 1, stampSize, stampSize);
+        ctx.strokeStyle = '#4a90e2';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(roomMinX + roomWidth - stampSize - 1, roomMinY + 1, stampSize, stampSize);
+
+        // Draw checkmark
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `${Math.max(2, scale * 3)}px monospace`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.globalAlpha = 1;
+        ctx.fillText('✓', roomMinX + roomWidth - stampSize / 2 - 0.5, roomMinY + stampSize / 2 + 0.5);
+      }
 
       // Highlight current room
       if (room.id === currentRoom?.id) {
@@ -204,7 +234,7 @@ export function FullMapOverlay() {
     ctx.beginPath();
     ctx.arc(arrowX, arrowY, arrowSize, 0, Math.PI * 2);
     ctx.fill();
-  }, [dungeon, playerState, currentRoom, zoom]);
+  }, [dungeon, playerState, currentRoom, zoom, visitedRooms]);
 
   // Get unique biomes for legend
   const biomesInDungeon = dungeon
