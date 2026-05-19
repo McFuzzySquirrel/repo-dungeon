@@ -1,9 +1,9 @@
 # Project Progress
 
 ## Current State
-**Phase**: Phase 6 — Desktop & Release hardening (Ready to Start)
-**Status**: In Progress  
-**Last Updated**: 2026-05-19T18:50:00Z  
+**Phase**: Phase 6 — Desktop & Release hardening (Complete)
+**Status**: Complete  
+**Last Updated**: 2026-05-19T19:08:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Completed Tasks
@@ -123,7 +123,23 @@
 - Cross-browser validation and performance profiling.
 - Accessibility audit pass and release/deploy readiness.
 
-## 🔄 Phase 6: Desktop & Release hardening (Ready to Start)
+### ✅ Phase 6: Desktop & Release hardening (Complete)
+**Built**
+- Hardened Electron packaging for desktop release targets with improved builder configuration and release workflow automation.
+- Added cross-browser compatibility hardening via legacy build support and runtime clipboard fallback handling.
+- Added performance/release verification scripts for bundle-size checks and release validation workflow gates.
+- Tightened accessibility defaults and release pipeline hardening in CI/deploy workflows.
+- Updated README with release, packaging, and deployment guidance.
+
+**Tests/Checks Passed**
+- `npm run lint` ✓
+- `npm run typecheck` ✓
+- `npm run test -- --run` ✓
+- `npm run build:web` ✓
+
+**Release Validation**
+- `npm run check:bundle-size` ✓
+- `npm run package:electron` ✓ (linux unpacked artifact)
 
 - [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
   - Files: `src/game/entities/Player.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/config/gameConfig.ts`, `src/game/scenes/BootScene.ts`, `tests/dungeon-scene.test.ts`
@@ -138,17 +154,17 @@
   - Files: `src/game/config/biomePresentation.ts`, `src/game/entities/NPCContributor.ts`, `src/game/entities/RoomObject.ts`, `src/game/entities/roomContent.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/audio/audioSettings.ts`, `src/ui/components/AudioControls.tsx`, `src/ui/components/GamePolishOverlay.tsx`, `src/ui/context/GameContext.tsx`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/shareUrl.ts`, `src/ui/AppShell.tsx`, `tests/biome-presentation.test.ts`, `tests/room-content.test.ts`, `tests/share-url.test.ts`, `public/assets/CREDITS.md`
 
 ## Current Task
-- [ ] Phase 6, Task 6.1–6.4: Desktop packaging, cross-browser/perf/accessibility audits, release hardening (`release-infra-engineer` + `qa-test-engineer`) [model: default]
-  - Status: Ready / not started
-  - Notes: Core gameplay/content features are complete; release readiness is next.
+- [x] Phase 6, Task 6.1–6.4: Desktop packaging, cross-browser/perf/accessibility audits, release hardening (`release-infra-engineer`) [model: default]
+  - Status: Complete
+  - Notes: Implemented in commit `3e4f061`.
 
 ## Remaining
-- [ ] Complete Phase 6 desktop and release hardening deliverables.
+- [ ] None.
 
 ## Blockers
 - None
 
 ## Notes
 - Phase 5 polish/content scaffolding completed in commit `6eaa1ef`.
-- Full validation currently passes (lint, typecheck, tests, build:web).
-- Next major effort is release readiness (desktop packaging, perf/accessibility, deployment checks).
+- Phase 6 release hardening completed in commit `3e4f061`.
+- Full-project validation currently passes (lint, typecheck, tests, build:web).
