@@ -429,7 +429,7 @@ export class DungeonScene extends Phaser.Scene {
     this.contributorsById.clear();
 
     for (const room of this.dungeon.rooms) {
-      const zone = this.zoneById.get(room.zoneId);
+      const zone = room.zoneId ? this.zoneById.get(room.zoneId) : null;
       const biomeId = zone?.biome.id ?? 'lost-archive';
 
       const roomObjects = RoomObject.spawnForRoom(this, room, biomeId, this.reducedMotion);
