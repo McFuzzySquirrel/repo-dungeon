@@ -130,7 +130,7 @@ export function WelcomeScreen({ auth, onStart, onLoadAndStart, onHelp }: Welcome
             <button
               className="welcome-btn welcome-btn--ghost welcome-btn--github-login"
               onClick={() => void auth.beginLogin()}
-              disabled={isLoading || auth.status === 'loading'}
+              disabled={isLoading}
             >
               🔑 Login with GitHub (private repos + higher rate limits)
             </button>

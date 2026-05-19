@@ -1,15 +1,40 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { TouchControls } from '@/ui/components/TouchControls';
-import type { useGameScene as useGameSceneHook } from '@/ui/context/GameContext';
+import type { GameContextType } from '@/ui/context/GameContext';
+import type Phaser from 'phaser';
 
-type UseGameScene = typeof useGameSceneHook;
-
-const mockUseGameScene = vi.fn<ReturnType<UseGameScene>, Parameters<UseGameScene>>();
+const mockUseGameScene = vi.fn<() => GameContextType>();
 
 vi.mock('@/ui/context/GameContext', () => ({
-  useGameScene: (): ReturnType<UseGameScene> => mockUseGameScene(),
+  useGameScene: () => mockUseGameScene(),
 }));
+
+function makeGameContext(overrides: Partial<GameContextType>): GameContextType {
+  return {
+    game: null,
+    dungeon: null,
+    playerState: null,
+    currentRoom: null,
+    isReady: false,
+    roomDetailsCache: new Map(),
+    cacheRoomDetails: vi.fn(),
+    getRoomDetails: vi.fn(),
+    ...overrides,
+  };
+}
+
+function makeMockGame(scene: {
+  setVirtualDirection: ReturnType<typeof vi.fn>;
+  clearVirtualDirections: ReturnType<typeof vi.fn>;
+  requestInteraction: ReturnType<typeof vi.fn>;
+}): Phaser.Game {
+  return {
+    scene: {
+      getScene: vi.fn(() => scene) as unknown as Phaser.Scenes.SceneManager['getScene'],
+    },
+  } as unknown as Phaser.Game;
+}
 
 function setTouchEnvironment({ coarsePointer, maxTouchPoints }: { coarsePointer: boolean; maxTouchPoints: number }) {
   Object.defineProperty(window, 'matchMedia', {
@@ -35,18 +60,14 @@ describe('TouchControls', () => {
 
   it('renders nothing when touch UI is not preferred', () => {
     setTouchEnvironment({ coarsePointer: false, maxTouchPoints: 0 });
-    mockUseGameScene.mockReturnValue({
-      game: {
-        scene: {
-          getScene: vi.fn(() => ({
-            setVirtualDirection: vi.fn(),
-            clearVirtualDirections: vi.fn(),
-            requestInteraction: vi.fn(),
-          })),
-        },
-      },
+    mockUseGameScene.mockReturnValue(makeGameContext({
+      game: makeMockGame({
+        setVirtualDirection: vi.fn(),
+        clearVirtualDirections: vi.fn(),
+        requestInteraction: vi.fn(),
+      }),
       isReady: true,
-    });
+    }));
 
     render(<TouchControls />);
 
@@ -58,16 +79,16 @@ describe('TouchControls', () => {
     const setVirtualDirection = vi.fn();
     const clearVirtualDirections = vi.fn();
     const requestInteraction = vi.fn();
-    const getScene = vi.fn(() => ({
+    const scene = {
       setVirtualDirection,
       clearVirtualDirections,
       requestInteraction,
-    }));
+    };
 
-    mockUseGameScene.mockReturnValue({
-      game: { scene: { getScene } },
+    mockUseGameScene.mockReturnValue(makeGameContext({
+      game: makeMockGame(scene),
       isReady: true,
-    });
+    }));
 
     const { unmount } = render(<TouchControls />);
 

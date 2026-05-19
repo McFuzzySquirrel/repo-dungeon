@@ -49,7 +49,7 @@ describe('WelcomeScreen auth UX', () => {
           session: {
             accessToken: 'token',
             tokenType: 'bearer',
-            scope: 'repo',
+            scope: ['repo'],
             createdAt: new Date().toISOString(),
           },
           user: {
