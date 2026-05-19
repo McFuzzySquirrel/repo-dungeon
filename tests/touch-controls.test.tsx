@@ -1,11 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { TouchControls } from '@/ui/components/TouchControls';
+import type { useGameScene as useGameSceneHook } from '@/ui/context/GameContext';
 
-const mockUseGameScene = vi.fn();
+type UseGameScene = typeof useGameSceneHook;
+
+const mockUseGameScene = vi.fn<ReturnType<UseGameScene>, Parameters<UseGameScene>>();
 
 vi.mock('@/ui/context/GameContext', () => ({
-  useGameScene: () => mockUseGameScene(),
+  useGameScene: (): ReturnType<UseGameScene> => mockUseGameScene(),
 }));
 
 function setTouchEnvironment({ coarsePointer, maxTouchPoints }: { coarsePointer: boolean; maxTouchPoints: number }) {

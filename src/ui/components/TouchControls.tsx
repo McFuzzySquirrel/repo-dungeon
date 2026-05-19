@@ -1,6 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
-import type Phaser from 'phaser';
 import { useGameScene } from '@/ui/context/GameContext';
 import '@/ui/styles/touch-controls.css';
 
