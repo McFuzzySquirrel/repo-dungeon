@@ -5,17 +5,21 @@ import { useDungeonStore } from '@/store/dungeonStore';
 import { useSessionStore } from '@/store/sessionStore';
 import type { UseGitHubAuthResult } from '@/ui/hooks/useGitHubAuth';
 
+type CreateGame = typeof import('@/game/createGame').createGame;
+type UseGitHubAuth = typeof import('@/ui/hooks/useGitHubAuth').useGitHubAuth;
+
 const { mockCreateGame, mockUseGitHubAuth } = vi.hoisted(() => ({
   mockCreateGame: vi.fn(),
   mockUseGitHubAuth: vi.fn(),
 }));
 
 vi.mock('@/game/createGame', () => ({
-  createGame: (...args: unknown[]) => mockCreateGame(...args),
+  createGame: (...args: Parameters<CreateGame>): ReturnType<CreateGame> =>
+    mockCreateGame(...args) as ReturnType<CreateGame>,
 }));
 
 vi.mock('@/ui/hooks/useGitHubAuth', () => ({
-  useGitHubAuth: () => mockUseGitHubAuth(),
+  useGitHubAuth: (): ReturnType<UseGitHubAuth> => mockUseGitHubAuth() as ReturnType<UseGitHubAuth>,
 }));
 
 vi.mock('@/ui/context/GameContext', () => ({

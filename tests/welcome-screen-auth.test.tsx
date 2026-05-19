@@ -4,12 +4,15 @@ import { WelcomeScreen } from '@/ui/components/WelcomeScreen';
 import { useSessionStore } from '@/store/sessionStore';
 import type { UseGitHubAuthResult } from '@/ui/hooks/useGitHubAuth';
 
+type UseGitHubData = typeof import('@/ui/hooks/useGitHubData').useGitHubData;
+
 const { mockUseGitHubData } = vi.hoisted(() => ({
   mockUseGitHubData: vi.fn(),
 }));
 
 vi.mock('@/ui/hooks/useGitHubData', () => ({
-  useGitHubData: (...args: unknown[]) => mockUseGitHubData(...args),
+  useGitHubData: (...args: Parameters<UseGitHubData>): ReturnType<UseGitHubData> =>
+    mockUseGitHubData(...args) as ReturnType<UseGitHubData>,
 }));
 
 function makeAuth(overrides: Partial<UseGitHubAuthResult> = {}): UseGitHubAuthResult {
