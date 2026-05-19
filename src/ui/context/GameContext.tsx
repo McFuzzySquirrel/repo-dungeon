@@ -134,8 +134,11 @@ export function GameContextProvider({ game, children }: GameContextProviderProps
 
     // Listen for roomEntered events
     const handleRoomEntered = (event: RoomEnteredEvent) => {
-      if (!initialDungeon) return;
-      const room = initialDungeon.rooms.find((r) => r.id === event.roomId);
+      const latestDungeon = dungeonScene.getDungeon();
+      if (latestDungeon) {
+        setDungeon(latestDungeon);
+      }
+      const room = latestDungeon?.rooms.find((r) => r.id === event.roomId);
       if (room) {
         setCurrentRoom(room);
       }

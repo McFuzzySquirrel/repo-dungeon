@@ -95,8 +95,14 @@ export function useGitHubAuth(): UseGitHubAuthResult {
   }, [hydrateSession]);
 
   const beginLogin = useCallback(async (): Promise<void> => {
-    const authUrl = await beginGitHubOAuth();
-    window.location.assign(authUrl);
+    setErrorMessage(null);
+    try {
+      const authUrl = await beginGitHubOAuth();
+      window.location.assign(authUrl);
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage(error instanceof Error ? error.message : 'Unable to start GitHub login.');
+    }
   }, []);
 
   const logout = useCallback(async (): Promise<void> => {

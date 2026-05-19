@@ -5,6 +5,13 @@ import { useSessionStore } from '@/store/sessionStore';
 import { useGameScene } from '@/ui/context/GameContext';
 import { encodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
 import { copyTextToClipboard } from '@/ui/systems/clipboard';
+import type { GitHubRepoSummary } from '@/github/types';
+
+interface RestartableDungeonScene {
+  scene: {
+    restart: (data: { repos: GitHubRepoSummary[]; username?: string; seed?: string }) => void;
+  };
+}
 
 export function GitHubAuthPanel() {
   const usernameInput = useSessionStore((state) => state.usernameInput);
@@ -13,12 +20,30 @@ export function GitHubAuthPanel() {
   const data = useGitHubData(auth.session?.accessToken);
   const [lastFetchError, setLastFetchError] = useState<string | null>(null);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
-  const { dungeon, currentRoom } = useGameScene();
+  const { game, dungeon, currentRoom } = useGameScene();
+
+  function restartDungeonWithRepos(repos: GitHubRepoSummary[], username: string): void {
+    if (!game) {
+      return;
+    }
+
+    const dungeonScene = game.scene.getScene('DungeonScene') as unknown as RestartableDungeonScene | null;
+    if (!dungeonScene) {
+      return;
+    }
+
+    dungeonScene.scene.restart({
+      repos,
+      username,
+      seed: dungeon?.metadata.seed,
+    });
+  }
 
   async function handlePublicFetch(): Promise<void> {
     setLastFetchError(null);
     try {
-      await data.fetchReposForUsername(usernameInput);
+      const repos = await data.fetchReposForUsername(usernameInput);
+      restartDungeonWithRepos(repos, usernameInput.trim());
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load repositories.';
       setLastFetchError(message);
@@ -28,7 +53,8 @@ export function GitHubAuthPanel() {
   async function handleAuthenticatedFetch(): Promise<void> {
     setLastFetchError(null);
     try {
-      await data.fetchReposForAuthenticatedUser();
+      const repos = await data.fetchReposForAuthenticatedUser();
+      restartDungeonWithRepos(repos, auth.user?.login ?? usernameInput.trim());
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load repositories.';
       setLastFetchError(message);
