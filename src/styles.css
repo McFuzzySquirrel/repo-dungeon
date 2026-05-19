@@ -1,0 +1,98 @@
+:root {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+  color: #e6e6e6;
+  background: #10131a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: #10131a;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+}
+
+.game-root {
+  width: min(100vw, 1100px);
+  aspect-ratio: 4 / 3;
+  margin: 0 auto;
+  background: #05070c;
+  border: 2px solid #2b3242;
+}
+
+.overlay {
+  position: absolute;
+  top: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  border: 1px solid #495066;
+  background: rgb(15 20 30 / 90%);
+  font-size: 0.8rem;
+  pointer-events: none;
+}
+
+.auth-panel {
+  width: min(100vw, 1100px);
+  margin: 0.75rem auto;
+  padding: 0.75rem;
+  border: 1px solid #384059;
+  border-radius: 0.5rem;
+  background: #111828;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.auth-panel input {
+  width: min(22rem, 100%);
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 1px solid #4a5474;
+  background: #0b1020;
+  color: #e6e6e6;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.auth-actions button {
+  border: 1px solid #3f517d;
+  border-radius: 0.4rem;
+  background: #1a2440;
+  color: #f2f7ff;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+}
+
+.auth-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b6c1df;
+}
+
+.auth-error {
+  margin: 0;
+  color: #ff9ca2;
+  font-size: 0.85rem;
+}
