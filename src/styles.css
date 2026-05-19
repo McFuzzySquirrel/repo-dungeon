@@ -96,3 +96,48 @@ body {
   color: #ff9ca2;
   font-size: 0.85rem;
 }
+
+.audio-controls {
+  width: min(100vw, 1100px);
+  margin: 0 auto 0.5rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: #d8e0ff;
+}
+
+.audio-mute-toggle {
+  border: 1px solid #4f648f;
+  border-radius: 0.35rem;
+  background: #13223f;
+  color: #f5f8ff;
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+}
+
+.audio-volume-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+}
+
+.polish-overlay {
+  position: absolute;
+  top: 3.25rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  gap: 0.25rem;
+  pointer-events: none;
+}
+
+.polish-tutorial,
+.polish-interaction {
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #44506e;
+  border-radius: 0.35rem;
+  background: rgb(12 18 32 / 88%);
+  font-size: 0.8rem;
+}

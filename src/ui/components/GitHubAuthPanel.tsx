@@ -2,6 +2,8 @@ import { useState } from 'react';
 import { useGitHubAuth } from '@/ui/hooks/useGitHubAuth';
 import { useGitHubData } from '@/ui/hooks/useGitHubData';
 import { useSessionStore } from '@/store/sessionStore';
+import { useGameScene } from '@/ui/context/GameContext';
+import { encodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
 
 export function GitHubAuthPanel() {
   const usernameInput = useSessionStore((state) => state.usernameInput);
@@ -9,6 +11,8 @@ export function GitHubAuthPanel() {
   const auth = useGitHubAuth();
   const data = useGitHubData(auth.session?.accessToken);
   const [lastFetchError, setLastFetchError] = useState<string | null>(null);
+  const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const { dungeon, currentRoom } = useGameScene();
 
   async function handlePublicFetch(): Promise<void> {
     setLastFetchError(null);
@@ -30,6 +34,29 @@ export function GitHubAuthPanel() {
     }
   }
 
+  async function handleCopyShareUrl(): Promise<void> {
+    if (!usernameInput.trim()) {
+      setShareMessage('Enter a username before sharing.');
+      return;
+    }
+
+    const shareUrl = encodeShareableDungeonUrl(
+      {
+        username: usernameInput,
+        seed: dungeon?.metadata.seed,
+        roomId: currentRoom?.id,
+      },
+      window.location.href,
+    );
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setShareMessage('Share URL copied to clipboard.');
+    } catch {
+      setShareMessage(`Share URL: ${shareUrl}`);
+    }
+  }
+
   return (
     <section className="auth-panel" aria-label="GitHub connection panel">
       <label htmlFor="github-username">GitHub Username</label>
@@ -45,6 +72,9 @@ export function GitHubAuthPanel() {
       <div className="auth-actions">
         <button type="button" onClick={() => void handlePublicFetch()} disabled={!usernameInput || data.status === 'loading'}>
           Load Public Repos
+        </button>
+        <button type="button" onClick={() => void handleCopyShareUrl()} disabled={!usernameInput}>
+          Copy Share URL
         </button>
         {auth.status === 'authenticated' ? (
           <>
@@ -74,6 +104,7 @@ export function GitHubAuthPanel() {
       {auth.errorMessage ? <p className="auth-error">{auth.errorMessage}</p> : null}
       {data.errorMessage ? <p className="auth-error">{data.errorMessage}</p> : null}
       {lastFetchError ? <p className="auth-error">{lastFetchError}</p> : null}
+      {shareMessage ? <p className="auth-meta">{shareMessage}</p> : null}
       {data.shouldPromptLogin ? <p className="auth-error">Rate limit reached. Authenticate to continue.</p> : null}
     </section>
   );

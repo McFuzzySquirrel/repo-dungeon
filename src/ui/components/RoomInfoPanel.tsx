@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useGameScene, useOnRoomEntered } from '@/ui/context/GameContext';
+import { useGameScene, useOnRoomEntered, useOnRoomObjectInteracted } from '@/ui/context/GameContext';
 import { GitHubApiClient, createGitHubApiClient, GitHubApiError } from '@/github/api';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import type { RoomEnteredEvent } from '@/ui/context/GameContext';
@@ -81,6 +81,27 @@ export function RoomInfoPanel() {
       },
       [state.isOpen, state.currentRoomId, getRoomDetails, visitedStamps],
     ),
+  );
+
+  useOnRoomObjectInteracted(
+    useCallback((event) => {
+      setState((prev) => {
+        if (!prev.isOpen || prev.currentRoomId !== event.roomId) {
+          return prev;
+        }
+
+        const activeTabByObject: Record<typeof event.objectType, TabType> = {
+          'readme-scroll': 'readme',
+          'file-tree-archive': 'files',
+          'contributors-gallery': 'contributors',
+        };
+
+        return {
+          ...prev,
+          activeTab: activeTabByObject[event.objectType],
+        };
+      });
+    }, []),
   );
 
   // Fetch room data from GitHub API

@@ -15,6 +15,28 @@ export interface RoomEnteredEvent {
   zone: DungeonZone | null;
 }
 
+export interface RoomObjectInteractedEvent {
+  roomId: string;
+  roomName: string;
+  objectType: 'readme-scroll' | 'file-tree-archive' | 'contributors-gallery';
+  title: string;
+  description: string;
+}
+
+export interface ContributorInteractedEvent {
+  roomId: string;
+  contributor: {
+    id: string;
+    login: string;
+    contributions: number;
+  };
+}
+
+export interface TutorialUpdatedEvent {
+  step: number;
+  completed: boolean;
+}
+
 interface DungeonSceneType {
   getDungeon(): DungeonMap | null;
   getPlayer(): { getState(): PlayerState } | null;
@@ -189,6 +211,51 @@ export function useOnPlayerMoved(callback: (state: PlayerState) => void): void {
 
     return () => {
       dungeonScene.events.off('playerMoved', callback);
+    };
+  }, [game, callback]);
+}
+
+export function useOnRoomObjectInteracted(callback: (event: RoomObjectInteractedEvent) => void): void {
+  const { game } = useGameScene();
+
+  useEffect(() => {
+    if (!game) return;
+    const dungeonScene = game.scene.getScene('DungeonScene') as unknown as DungeonSceneType | null;
+    if (!dungeonScene) return;
+
+    dungeonScene.events.on('roomObjectInteracted', callback);
+    return () => {
+      dungeonScene.events.off('roomObjectInteracted', callback);
+    };
+  }, [game, callback]);
+}
+
+export function useOnContributorInteracted(callback: (event: ContributorInteractedEvent) => void): void {
+  const { game } = useGameScene();
+
+  useEffect(() => {
+    if (!game) return;
+    const dungeonScene = game.scene.getScene('DungeonScene') as unknown as DungeonSceneType | null;
+    if (!dungeonScene) return;
+
+    dungeonScene.events.on('contributorInteracted', callback);
+    return () => {
+      dungeonScene.events.off('contributorInteracted', callback);
+    };
+  }, [game, callback]);
+}
+
+export function useOnTutorialUpdated(callback: (event: TutorialUpdatedEvent) => void): void {
+  const { game } = useGameScene();
+
+  useEffect(() => {
+    if (!game) return;
+    const dungeonScene = game.scene.getScene('DungeonScene') as unknown as DungeonSceneType | null;
+    if (!dungeonScene) return;
+
+    dungeonScene.events.on('tutorialUpdated', callback);
+    return () => {
+      dungeonScene.events.off('tutorialUpdated', callback);
     };
   }, [game, callback]);
 }
