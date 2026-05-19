@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { BootScene } from '@/game/scenes/BootScene';
 import { StaticRoomScene } from '@/game/scenes/StaticRoomScene';
+import { DungeonScene } from '@/game/scenes/DungeonScene';
 
 export const GAME_DIMENSIONS = {
   width: 960,
@@ -15,7 +16,14 @@ export function createGameConfig(parent: HTMLElement): Phaser.Types.Core.GameCon
     height: GAME_DIMENSIONS.height,
     backgroundColor: '#0d0f16',
     pixelArt: true,
-    scene: [BootScene, StaticRoomScene],
+    physics: {
+      default: 'arcade',
+      arcade: {
+        gravity: { x: 0, y: 0 },
+        debug: false,
+      },
+    },
+    scene: [BootScene, StaticRoomScene, DungeonScene],
     scale: {
       mode: Phaser.Scale.FIT,
       autoCenter: Phaser.Scale.CENTER_BOTH,
