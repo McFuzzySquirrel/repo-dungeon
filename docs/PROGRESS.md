@@ -1,9 +1,9 @@
 # Project Progress
 
 ## Current State
-**Phase**: Phase 5 — Polish & Biomes (Ready to Start)
+**Phase**: Phase 6 — Desktop & Release hardening (Ready to Start)
 **Status**: In Progress  
-**Last Updated**: 2026-05-19T18:36:00Z  
+**Last Updated**: 2026-05-19T18:50:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Completed Tasks
@@ -103,7 +103,27 @@
 - Ambient audio and biome presentation polish.
 - Contributor NPC behaviors and interactable props.
 
-## 🔄 Phase 5: Polish & Biomes (Ready to Start)
+### ✅ Phase 5: Polish & Biomes (Complete)
+**Built**
+- Biome presentation layer with per-biome palette/pattern/audio metadata and scene integration.
+- Contributor NPC scaffolding with deterministic spawn/movement and interaction payloads.
+- Interactable room objects (README Scroll, File Tree Archive, Contributors' Gallery) with event hooks.
+- Ambient audio hooks and user-facing audio controls with safe fallback behavior.
+- Tutorial/intro scaffolding with non-blocking overlay integration.
+- Share URL encode/decode helpers integrated into app flow.
+
+**Tests/Checks Passed**
+- `npm run lint` ✓
+- `npm run typecheck` ✓
+- `npm run test -- --run` ✓
+- `npm run build:web` ✓
+
+**Next Phase Requires**
+- Finalize Electron packaging for target platforms.
+- Cross-browser validation and performance profiling.
+- Accessibility audit pass and release/deploy readiness.
+
+## 🔄 Phase 6: Desktop & Release hardening (Ready to Start)
 
 - [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
   - Files: `src/game/entities/Player.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/config/gameConfig.ts`, `src/game/scenes/BootScene.ts`, `tests/dungeon-scene.test.ts`
@@ -114,20 +134,21 @@
   - Files: `src/ui/components/RoomInfoPanel.tsx`, `src/ui/systems/VisitedStamps.ts`, `src/ui/styles/room-info.css`, `tests/room-info-panel.test.tsx`, `tests/visited-stamps.test.ts`
 - [x] Phase 4, Task 4.1–4.3: Implement character classes, XP progression, loot generation, badges, inventory/profile overlays (`progression-rewards-engineer`) [model: default]
   - Files: `src/game/config/classes.ts`, `src/game/systems/ProgressionTracker.ts`, `src/game/systems/LootGenerator.ts`, `src/game/systems/BadgeTracker.ts`, `src/store/progressionStore.ts`, `src/ui/components/CharacterSelect.tsx`, `src/ui/components/LevelUpOverlay.tsx`, `src/ui/components/BadgeUnlockOverlay.tsx`, `src/ui/components/InventoryPanel.tsx`, `src/ui/components/ProfileRoom.tsx`, `src/ui/hooks/useProgression.ts`, `tests/progression-tracker.test.ts`, `tests/loot-generator.test.ts`, `tests/badge-tracker.test.ts`, `tests/character-select.test.tsx`, `tests/inventory-panel.test.tsx`, `src/ui/AppShell.tsx`
+- [x] Phase 5, Task 5.1–5.3: Biome polish, NPC/object interaction scaffolding, ambient hooks, tutorial/share-url support (`world-content-engineer`) [model: default]
+  - Files: `src/game/config/biomePresentation.ts`, `src/game/entities/NPCContributor.ts`, `src/game/entities/RoomObject.ts`, `src/game/entities/roomContent.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/audio/audioSettings.ts`, `src/ui/components/AudioControls.tsx`, `src/ui/components/GamePolishOverlay.tsx`, `src/ui/context/GameContext.tsx`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/shareUrl.ts`, `src/ui/AppShell.tsx`, `tests/biome-presentation.test.ts`, `tests/room-content.test.ts`, `tests/share-url.test.ts`, `public/assets/CREDITS.md`
 
 ## Current Task
-- [ ] Phase 5, Task 5.1–5.3: Biome visual/audio polish and class sprite integration (`world-content-engineer`) [model: default]
+- [ ] Phase 6, Task 6.1–6.4: Desktop packaging, cross-browser/perf/accessibility audits, release hardening (`release-infra-engineer` + `qa-test-engineer`) [model: default]
   - Status: Ready / not started
-  - Notes: Core progression systems are implemented; content/art polish is next.
+  - Notes: Core gameplay/content features are complete; release readiness is next.
 
 ## Remaining
-- [ ] Complete Phase 5 polish and biome deliverables.
-- [ ] Phase 6: Desktop & Release hardening.
+- [ ] Complete Phase 6 desktop and release hardening deliverables.
 
 ## Blockers
 - None
 
 ## Notes
-- Progression systems (classes, XP, loot, badges, inventory/profile overlays) are now implemented and validated.
+- Phase 5 polish/content scaffolding completed in commit `6eaa1ef`.
 - Full validation currently passes (lint, typecheck, tests, build:web).
-- Next major effort is Phase 5 art/content polish and biome presentation depth.
+- Next major effort is release readiness (desktop packaging, perf/accessibility, deployment checks).
