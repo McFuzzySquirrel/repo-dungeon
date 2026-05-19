@@ -1,0 +1,292 @@
+/* Minimap HUD styling */
+.minimap-hud {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 100;
+  pointer-events: auto;
+}
+
+.minimap-container {
+  background: rgba(0, 0, 0, 0.7);
+  border: 2px solid #495066;
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.minimap-canvas {
+  display: block;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.minimap-info {
+  margin-top: 8px;
+  padding: 0 8px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.minimap-room-name {
+  font-size: 0.875rem;
+  color: #e6e6e6;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+.minimap-biome {
+  font-size: 0.75rem;
+  color: #b6c1df;
+  font-style: italic;
+}
+
+.minimap-coords {
+  font-size: 0.7rem;
+  color: #7a8aa0;
+  font-family: monospace;
+}
+
+/* Full-screen map overlay */
+.fullmap-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  pointer-events: auto;
+}
+
+.fullmap-modal {
+  background: #111828;
+  border: 2px solid #495066;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  max-width: 90vw;
+  max-height: 90vh;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
+}
+
+.fullmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid #384059;
+}
+
+.fullmap-header h2 {
+  margin: 0;
+  font-size: 1.25rem;
+  color: #e6e6e6;
+}
+
+.fullmap-close {
+  background: none;
+  border: none;
+  color: #b6c1df;
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: all 150ms ease;
+}
+
+.fullmap-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e6e6e6;
+}
+
+.fullmap-close:focus-visible {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
+
+.fullmap-canvas-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow: auto;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.fullmap-canvas {
+  border: 1px solid #384059;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.4);
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  max-width: 100%;
+  max-height: 100%;
+}
+
+.fullmap-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-top: 1px solid #384059;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.fullmap-zoom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fullmap-zoom button {
+  background: #1a2440;
+  border: 1px solid #3f517d;
+  color: #e6e6e6;
+  width: 32px;
+  height: 32px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 150ms ease;
+}
+
+.fullmap-zoom button:hover {
+  background: #2a3555;
+  border-color: #4a5f8a;
+}
+
+.fullmap-zoom button:focus-visible {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
+
+.fullmap-zoom-level {
+  font-size: 0.875rem;
+  color: #b6c1df;
+  min-width: 50px;
+  text-align: center;
+  font-family: monospace;
+}
+
+.fullmap-legend {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.fullmap-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.fullmap-legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.fullmap-legend-label {
+  font-size: 0.8rem;
+  color: #b6c1df;
+}
+
+.fullmap-footer {
+  padding: 8px 20px;
+  border-top: 1px solid #384059;
+  text-align: center;
+}
+
+.fullmap-footer p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: #7a8aa0;
+}
+
+.fullmap-footer kbd {
+  background: #1a2440;
+  border: 1px solid #3f517d;
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: monospace;
+  font-size: 0.7rem;
+  color: #e6e6e6;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .minimap-hud {
+    top: 8px;
+    right: 8px;
+  }
+
+  .minimap-container {
+    padding: 6px;
+  }
+
+  .minimap-canvas {
+    width: 120px;
+    height: 120px;
+  }
+
+  .fullmap-modal {
+    max-width: 95vw;
+    max-height: 95vh;
+  }
+
+  .fullmap-canvas {
+    max-width: 100%;
+    max-height: 400px;
+  }
+
+  .fullmap-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .fullmap-legend {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .minimap-hud,
+  .fullmap-close,
+  .fullmap-zoom button {
+    transition: none;
+  }
+}
+
+/* Ensure proper stacking context */
+.app-shell {
+  position: relative;
+}
+
+.game-root {
+  position: relative;
+  z-index: 1;
+}
+
+/* Accessibility focus styles */
+.minimap-canvas:focus-visible {
+  outline: 2px solid #4a90e2;
+  outline-offset: 2px;
+}
