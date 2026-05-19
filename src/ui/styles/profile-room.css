@@ -1,0 +1,337 @@
+/* Profile Room */
+
+.profile-room {
+  background: linear-gradient(135deg, rgba(15, 52, 96, 0.8) 0%, rgba(22, 33, 62, 0.8) 100%);
+  border: 2px solid rgba(74, 158, 255, 0.3);
+  border-radius: 12px;
+  padding: 2rem;
+  margin: 1rem;
+  max-width: 500px;
+  backdrop-filter: blur(4px);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0 20px rgba(74, 158, 255, 0.05);
+}
+
+.profile-room-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+/* Sections */
+.profile-section {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(74, 158, 255, 0.2);
+  border-radius: 8px;
+  padding: 1.25rem;
+}
+
+.profile-section-title {
+  font-size: 1rem;
+  font-weight: bold;
+  color: #4a9eff;
+  margin: 0 0 1rem 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+/* Class Section */
+.profile-class-section {
+  background: linear-gradient(135deg, rgba(74, 158, 255, 0.1) 0%, rgba(74, 158, 255, 0.05) 100%);
+  border-color: rgba(74, 158, 255, 0.3);
+}
+
+.profile-class-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.profile-class-emoji {
+  font-size: 3rem;
+  line-height: 1;
+}
+
+.profile-class-info {
+  flex: 1;
+}
+
+.profile-class-name {
+  font-size: 1.5rem;
+  color: #4a9eff;
+  margin: 0;
+  font-weight: bold;
+}
+
+.profile-class-desc {
+  font-size: 0.85rem;
+  color: #aaa;
+  margin: 0.25rem 0 0 0;
+  line-height: 1.3;
+}
+
+.profile-level-info {
+  display: flex;
+  justify-content: center;
+}
+
+.profile-level-display {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(74, 158, 255, 0.3);
+  border-radius: 8px;
+  padding: 1rem 2rem;
+  min-width: 120px;
+}
+
+.profile-level-number {
+  display: block;
+  font-size: 2.5rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #4a9eff 0%, #2ecc71 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.profile-level-label {
+  display: block;
+  font-size: 0.85rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 0.25rem;
+}
+
+/* XP Section */
+.profile-xp-section {
+  background: linear-gradient(135deg, rgba(46, 204, 113, 0.1) 0%, rgba(46, 204, 113, 0.05) 100%);
+  border-color: rgba(46, 204, 113, 0.3);
+}
+
+.profile-xp-bar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.profile-xp-bar {
+  width: 100%;
+  height: 24px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(46, 204, 113, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.profile-xp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2ecc71 0%, #27ae60 100%);
+  transition: width 0.3s ease;
+  box-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+}
+
+.profile-xp-text {
+  font-size: 0.8rem;
+  color: #888;
+  margin: 0;
+  text-align: center;
+}
+
+/* Rooms Section */
+.profile-rooms-section {
+  background: linear-gradient(135deg, rgba(212, 175, 55, 0.1) 0%, rgba(212, 175, 55, 0.05) 100%);
+  border-color: rgba(212, 175, 55, 0.3);
+}
+
+.profile-rooms-count {
+  font-size: 1.1rem;
+  color: #ddd;
+  margin: 0 0 0.75rem 0;
+}
+
+.profile-rooms-count strong {
+  color: #d4af37;
+}
+
+.profile-rooms-bar {
+  width: 100%;
+  height: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.profile-rooms-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #d4af37 0%, #c99d2e 100%);
+  transition: width 0.5s ease;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
+}
+
+/* Badges Section */
+.profile-badges-section {
+  background: linear-gradient(135deg, rgba(233, 212, 96, 0.08) 0%, rgba(233, 212, 96, 0.03) 100%);
+  border-color: rgba(233, 212, 96, 0.2);
+}
+
+.profile-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 0.75rem;
+}
+
+.profile-badge {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(212, 175, 55, 0.3);
+  border-radius: 6px;
+  padding: 0.75rem;
+  text-align: center;
+  transition: all 0.3s ease;
+  cursor: pointer;
+}
+
+.profile-badge:hover {
+  background: rgba(212, 175, 55, 0.15);
+  border-color: rgba(212, 175, 55, 0.6);
+  transform: translateY(-2px);
+}
+
+.profile-badge-icon {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.25rem;
+}
+
+.profile-badge-name {
+  display: block;
+  font-size: 0.7rem;
+  color: #aaa;
+  font-weight: 500;
+}
+
+.profile-no-badges {
+  color: #888;
+  font-size: 0.9rem;
+  margin: 0;
+  padding: 1rem;
+  text-align: center;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+/* Loot Section */
+.profile-loot-section {
+  background: linear-gradient(135deg, rgba(52, 152, 219, 0.1) 0%, rgba(52, 152, 219, 0.05) 100%);
+  border-color: rgba(52, 152, 219, 0.3);
+}
+
+.profile-loot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.profile-loot-item {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.profile-loot-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+  transform: translateX(4px);
+}
+
+.profile-loot-item-common {
+  border-color: rgba(136, 136, 136, 0.3);
+}
+
+.profile-loot-item-uncommon {
+  border-color: rgba(74, 158, 255, 0.3);
+}
+
+.profile-loot-item-rare {
+  border-color: rgba(212, 175, 55, 0.3);
+  background: rgba(212, 175, 55, 0.05);
+}
+
+.profile-loot-icon {
+  font-size: 1.25rem;
+  flex-shrink: 0;
+}
+
+.profile-loot-details {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.profile-loot-details strong {
+  color: #ddd;
+}
+
+.profile-loot-details small {
+  color: #888;
+}
+
+/* Stats Section */
+.profile-stats-section {
+  background: linear-gradient(135deg, rgba(155, 89, 182, 0.1) 0%, rgba(155, 89, 182, 0.05) 100%);
+  border-color: rgba(155, 89, 182, 0.3);
+}
+
+.profile-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.profile-stat {
+  text-align: center;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 4px;
+  padding: 0.75rem;
+}
+
+.profile-stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5rem;
+}
+
+.profile-stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: #4a9eff;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .profile-room {
+    max-width: 100%;
+    padding: 1.5rem;
+    margin: 1rem auto;
+  }
+
+  .profile-badges-grid {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .profile-stats-grid {
+    grid-template-columns: 1fr;
+  }
+}

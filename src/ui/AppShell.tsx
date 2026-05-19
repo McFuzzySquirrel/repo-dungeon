@@ -6,6 +6,8 @@ import { GameContextProvider } from '@/ui/context/GameContext';
 import { Minimap } from '@/ui/components/Minimap';
 import { FullMapOverlay } from '@/ui/components/FullMapOverlay';
 import { RoomInfoPanel } from '@/ui/components/RoomInfoPanel';
+import { CharacterSelect } from '@/ui/components/CharacterSelect';
+import { InventoryPanel } from '@/ui/components/InventoryPanel';
 
 export function AppShell() {
   const hostRef = useRef<HTMLDivElement | null>(null);
@@ -31,7 +33,9 @@ export function AppShell() {
         <FullMapOverlay />
         <RoomInfoPanel />
         <GitHubAuthPanel />
-        <p className="overlay">Repo Dungeon — Phase 3 Room Info Panel</p>
+        <CharacterSelect />
+        <InventoryPanel />
+        <p className="overlay">Repo Dungeon — Phase 4 Progression System</p>
       </main>
     </GameContextProvider>
   );

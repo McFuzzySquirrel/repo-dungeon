@@ -1,9 +1,9 @@
 # Project Progress
 
 ## Current State
-**Phase**: Phase 4 — Progression System (Ready to Start)
+**Phase**: Phase 5 — Polish & Biomes (Ready to Start)
 **Status**: In Progress  
-**Last Updated**: 2026-05-19T18:15:00Z  
+**Last Updated**: 2026-05-19T18:36:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Completed Tasks
@@ -83,7 +83,27 @@
 - Loot generation (repo property-based).
 - Badge system and profile hub.
 
-## 🔄 Phase 4: Progression System (Ready to Start)
+### ✅ Phase 4: Progression System (Complete)
+**Built**
+- Character class system with selection UI (Explorer, Archivist, Hacker, Contributor) and per-class XP modifiers.
+- Progression tracker with XP awards for room entry, info panel interactions, and GitHub visits.
+- Loot generation system mapped to repo properties (language, stars, topics, contributors, archived/fork/readme flags).
+- Badge tracker with milestone unlock logic and unlock overlays.
+- Inventory panel, level-up overlay, and profile room UI components.
+- Progression state store and hook integration for React overlays.
+
+**Tests/Checks Passed**
+- `npm run lint` ✓
+- `npm run typecheck` ✓
+- `npm run test -- --run` ✓
+- `npm run build:web` ✓
+
+**Next Phase Requires**
+- Pixel art biome tilesets and class sprites.
+- Ambient audio and biome presentation polish.
+- Contributor NPC behaviors and interactable props.
+
+## 🔄 Phase 5: Polish & Biomes (Ready to Start)
 
 - [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
   - Files: `src/game/entities/Player.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/config/gameConfig.ts`, `src/game/scenes/BootScene.ts`, `tests/dungeon-scene.test.ts`
@@ -92,21 +112,22 @@
 
 - [x] Phase 3, Task 3.1–3.2: Build room info panel with GitHub data loading and visited stamp persistence (`ui-experience-engineer`) [model: default]
   - Files: `src/ui/components/RoomInfoPanel.tsx`, `src/ui/systems/VisitedStamps.ts`, `src/ui/styles/room-info.css`, `tests/room-info-panel.test.tsx`, `tests/visited-stamps.test.ts`
+- [x] Phase 4, Task 4.1–4.3: Implement character classes, XP progression, loot generation, badges, inventory/profile overlays (`progression-rewards-engineer`) [model: default]
+  - Files: `src/game/config/classes.ts`, `src/game/systems/ProgressionTracker.ts`, `src/game/systems/LootGenerator.ts`, `src/game/systems/BadgeTracker.ts`, `src/store/progressionStore.ts`, `src/ui/components/CharacterSelect.tsx`, `src/ui/components/LevelUpOverlay.tsx`, `src/ui/components/BadgeUnlockOverlay.tsx`, `src/ui/components/InventoryPanel.tsx`, `src/ui/components/ProfileRoom.tsx`, `src/ui/hooks/useProgression.ts`, `tests/progression-tracker.test.ts`, `tests/loot-generator.test.ts`, `tests/badge-tracker.test.ts`, `tests/character-select.test.tsx`, `tests/inventory-panel.test.tsx`, `src/ui/AppShell.tsx`
 
 ## Current Task
-- [ ] Phase 4, Task 4.1–4.3: Implement character class selection, XP system, and progression tracking (`progression-rewards-engineer`) [model: default]
+- [ ] Phase 5, Task 5.1–5.3: Biome visual/audio polish and class sprite integration (`world-content-engineer`) [model: default]
   - Status: Ready / not started
-  - Notes: Room content is interactive; progression mechanics can now be layered on top.
+  - Notes: Core progression systems are implemented; content/art polish is next.
 
 ## Remaining
-- [ ] Complete Phase 4 progression deliverables.
-- [ ] Phase 5: Polish & Biomes.
+- [ ] Complete Phase 5 polish and biome deliverables.
 - [ ] Phase 6: Desktop & Release hardening.
 
 ## Blockers
 - None
 
 ## Notes
-- Phase 3 implementation complete: Room Info Panel with GitHub API integration + visited stamps with localStorage.
-- 70 tests passing total (26 game + 52 UI + 12 visited stamps).
-- Ready to transition to Phase 4: progression mechanics (XP, loot, badges, character classes).
+- Progression systems (classes, XP, loot, badges, inventory/profile overlays) are now implemented and validated.
+- Full validation currently passes (lint, typecheck, tests, build:web).
+- Next major effort is Phase 5 art/content polish and biome presentation depth.

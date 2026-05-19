@@ -1,0 +1,162 @@
+/* Level Up Overlay */
+
+.level-up-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(15, 52, 96, 0.9) 0%, rgba(22, 33, 62, 0.9) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(2px);
+  animation: levelUpFadeIn 0.4s ease-out;
+}
+
+@keyframes levelUpFadeIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0px);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(2px);
+  }
+}
+
+.level-up-content {
+  position: relative;
+  text-align: center;
+  z-index: 1;
+}
+
+.level-up-text {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  animation: levelUpScaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes levelUpScaleIn {
+  from {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.level-up-label {
+  font-size: 3rem;
+  font-weight: bold;
+  color: #4a9eff;
+  text-shadow: 0 0 20px rgba(74, 158, 255, 0.6), 0 2px 10px rgba(0, 0, 0, 0.8);
+  letter-spacing: 2px;
+  animation: levelUpPulse 1s ease-in-out infinite;
+}
+
+@keyframes levelUpPulse {
+  0%, 100% {
+    text-shadow: 0 0 20px rgba(74, 158, 255, 0.6), 0 2px 10px rgba(0, 0, 0, 0.8);
+    transform: scale(1);
+  }
+  50% {
+    text-shadow: 0 0 30px rgba(74, 158, 255, 0.9), 0 2px 10px rgba(0, 0, 0, 0.8);
+    transform: scale(1.05);
+  }
+}
+
+.level-up-number {
+  font-size: 5rem;
+  font-weight: bold;
+  background: linear-gradient(135deg, #4a9eff 0%, #2ecc71 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: none;
+  animation: levelUpBounce 0.6s ease-out;
+}
+
+@keyframes levelUpBounce {
+  0% {
+    transform: translateY(30px) scale(0.8);
+    opacity: 0;
+  }
+  70% {
+    transform: translateY(-10px);
+  }
+  100% {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+  }
+}
+
+.level-up-subtitle {
+  font-size: 0.95rem;
+  color: #aaa;
+  margin-top: 2rem;
+  animation: fadeInDelayed 0.8s ease-out 0.4s both;
+}
+
+@keyframes fadeInDelayed {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Confetti / Sparkle Animation */
+.confetti {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.confetti::before,
+.confetti::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+}
+
+.confetti::before {
+  background: radial-gradient(circle, rgba(74, 158, 255, 0.4) 0%, transparent 70%);
+  animation: sparkleExpand 1s ease-out;
+}
+
+@keyframes sparkleExpand {
+  from {
+    transform: scale(0);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+.confetti::after {
+  background: radial-gradient(circle, rgba(46, 204, 113, 0.3) 0%, transparent 70%);
+  animation: sparkleExpand2 1s ease-out 0.1s both;
+}
+
+@keyframes sparkleExpand2 {
+  from {
+    transform: scale(0.8);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1.2);
+    opacity: 0;
+  }
+}
