@@ -2,15 +2,15 @@
 
 .xp-hud {
   position: fixed;
-  bottom: 16px;
+  top: 16px;
   left: 16px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
   background: rgba(10, 16, 28, 0.88);
   border: 1px solid rgba(99, 245, 255, 0.22);
-  border-radius: 8px;
-  padding: 0.4rem 0.65rem;
+  border-radius: 10px;
+  padding: 0.45rem 0.7rem;
   z-index: 400;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
   pointer-events: none; /* purely display */
@@ -44,7 +44,7 @@
   display: flex;
   flex-direction: column;
   gap: 0.2rem;
-  min-width: 90px;
+  min-width: 110px;
 }
 
 .xp-hud-bar-track {

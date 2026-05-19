@@ -26,6 +26,7 @@ const ROOM_OBJECT_COLORS: Record<RoomObjectType, number> = {
 export class RoomObject extends Phaser.GameObjects.Container {
   private readonly interactionRadius: number;
   private readonly payload: RoomObjectInteractionPayload;
+  private collected = false;
 
   constructor(
     scene: Phaser.Scene,
@@ -80,10 +81,28 @@ export class RoomObject extends Phaser.GameObjects.Container {
   }
 
   canInteractFrom(playerX: number, playerY: number): boolean {
+    if (this.collected || !this.visible || !this.active) {
+      return false;
+    }
     return Phaser.Math.Distance.Between(playerX, playerY, this.x, this.y) <= this.interactionRadius;
   }
 
-  interact(): RoomObjectInteractionPayload {
+  getPromptTitle(): string {
+    return this.payload.title;
+  }
+
+  isCollected(): boolean {
+    return this.collected;
+  }
+
+  collect(): RoomObjectInteractionPayload | null {
+    if (this.collected) {
+      return null;
+    }
+
+    this.collected = true;
+    this.setVisible(false);
+    this.setActive(false);
     return this.payload;
   }
 

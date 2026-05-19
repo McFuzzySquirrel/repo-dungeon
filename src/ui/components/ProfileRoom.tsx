@@ -5,6 +5,7 @@
 import { useProgressionStore } from '@/store/progressionStore';
 import { CLASSES } from '@/game/config/classes';
 import { BADGES } from '@/game/systems/BadgeTracker';
+import { getXpForNextLevel } from '@/game/systems/ProgressionTracker';
 import '@/ui/styles/profile-room.css';
 
 interface ProfileRoomProps {
@@ -35,7 +36,7 @@ export function ProfileRoom({ totalRooms, visitedRooms }: ProfileRoomProps) {
   ];
 
   // Calculate progress (assuming 300 XP to next level on average)
-  const maxXpPerLevel = 300;
+  const maxXpPerLevel = getXpForNextLevel(level);
   const progressPercent = Math.min((xpTowardNextLevel / maxXpPerLevel) * 100, 100);
 
   return (
@@ -73,7 +74,7 @@ export function ProfileRoom({ totalRooms, visitedRooms }: ProfileRoomProps) {
                 aria-valuemax={100}
               />
             </div>
-            <p className="profile-xp-text">{xpTowardNextLevel} / ~300 XP</p>
+            <p className="profile-xp-text">{xpTowardNextLevel} / {maxXpPerLevel} XP</p>
           </div>
         </div>
 

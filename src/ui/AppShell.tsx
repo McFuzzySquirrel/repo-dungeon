@@ -10,8 +10,10 @@ import { CharacterSelect } from '@/ui/components/CharacterSelect';
 import { InventoryPanel } from '@/ui/components/InventoryPanel';
 import { AudioControls } from '@/ui/components/AudioControls';
 import { GamePolishOverlay } from '@/ui/components/GamePolishOverlay';
+import { GameHudControls } from '@/ui/components/GameHudControls';
 import { WelcomeScreen } from '@/ui/components/WelcomeScreen';
 import { HelpOverlay } from '@/ui/components/HelpOverlay';
+import { ProgressionController } from '@/ui/components/ProgressionController';
 import { XpHud } from '@/ui/components/XpHud';
 import { decodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
 import { useSessionStore } from '@/store/sessionStore';
@@ -94,6 +96,7 @@ export function AppShell() {
         <div className="game-root" ref={hostRef} />
         {!showWelcome && (
           <>
+            <ProgressionController />
             <Minimap />
             <FullMapOverlay />
             <RoomInfoPanel />
@@ -103,14 +106,7 @@ export function AppShell() {
             <AudioControls />
             <GamePolishOverlay />
             <XpHud />
-            <button
-              className="help-hud-btn"
-              onClick={openHelp}
-              aria-label="How to play (H)"
-              title="How to play (H)"
-            >
-              ?
-            </button>
+            <GameHudControls onOpenHelp={openHelp} onOpenHome={() => setShowWelcome(true)} />
           </>
         )}
         {showWelcome && (

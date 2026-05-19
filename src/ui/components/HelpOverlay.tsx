@@ -62,6 +62,10 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
                   <td>Toggle full map</td>
                 </tr>
                 <tr>
+                  <td>HUD buttons</td>
+                  <td>Home, zoom, and help controls</td>
+                </tr>
+                <tr>
                   <td><kbd>H</kbd></td>
                   <td>Toggle this help screen</td>
                 </tr>
@@ -77,6 +81,7 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
             <h3 className="help-section-title">🗺️ Exploration</h3>
             <ul className="help-list">
               <li>Walk into a room to discover it — each room is a GitHub repository.</li>
+              <li>Use the top-right zoom controls if labels feel cramped or you need a wider view.</li>
               <li>Open the <strong>Room Info Panel</strong> to read the README, browse files, and see contributors.</li>
               <li>Rooms are grouped into <strong>biome zones</strong> themed by language and topics.</li>
               <li>Visited rooms are marked on the minimap with a ✓.</li>
@@ -87,7 +92,7 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
             <h3 className="help-section-title">⚡ Progression</h3>
             <ul className="help-list">
               <li>Earn <strong>XP</strong> by entering rooms, reading READMEs, and interacting with objects.</li>
-              <li>Level up to unlock new abilities and increase your XP multiplier.</li>
+              <li>Your XP and level appear in the top-left HUD so they stay clear of inventory controls.</li>
               <li>Collect <strong>loot</strong> from room objects and contributor NPCs.</li>
               <li>Unlock <strong>badges</strong> for milestones — check them in your Inventory.</li>
             </ul>

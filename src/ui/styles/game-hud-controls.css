@@ -1,0 +1,72 @@
+.game-hud-controls {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  z-index: 410;
+}
+
+.game-hud-zoom {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem;
+  border: 1px solid rgba(86, 114, 162, 0.45);
+  border-radius: 999px;
+  background: rgba(10, 16, 28, 0.9);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+
+.game-hud-btn,
+.game-hud-zoom-readout {
+  border: 1px solid rgba(99, 245, 255, 0.24);
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(26, 37, 60, 0.96), rgba(11, 18, 32, 0.96));
+  color: #eaf2ff;
+  font-family: monospace;
+  font-size: 0.78rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 120ms ease, border-color 120ms ease, background 120ms ease;
+}
+
+.game-hud-btn {
+  min-width: 42px;
+  padding: 0.5rem 0.8rem;
+}
+
+.game-hud-zoom-readout {
+  min-width: 60px;
+  padding: 0.5rem 0.65rem;
+}
+
+.game-hud-btn:hover,
+.game-hud-zoom-readout:hover {
+  transform: translateY(-1px);
+  border-color: rgba(99, 245, 255, 0.56);
+  background: linear-gradient(180deg, rgba(35, 49, 77, 0.98), rgba(13, 22, 40, 0.98));
+}
+
+.game-hud-btn:focus-visible,
+.game-hud-zoom-readout:focus-visible {
+  outline: 2px solid rgba(99, 245, 255, 0.85);
+  outline-offset: 2px;
+}
+
+@media (max-width: 720px) {
+  .game-hud-controls {
+    top: auto;
+    bottom: 16px;
+    right: 16px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    max-width: calc(100vw - 32px);
+  }
+
+  .game-hud-btn,
+  .game-hud-zoom-readout {
+    padding: 0.45rem 0.65rem;
+  }
+}

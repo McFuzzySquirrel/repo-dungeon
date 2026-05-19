@@ -24,7 +24,7 @@ export interface ProgressionState {
  * XP thresholds for leveling
  * Returns the total XP needed to reach a given level
  */
-function getXpThresholdForLevel(level: number): number {
+export function getXpThresholdForLevel(level: number): number {
   if (level <= 1) return 0;
   if (level <= 5) return (level - 1) * 100; // 100 XP per level
   if (level <= 10) return 500 + (level - 5) * 200; // 200 XP per level
@@ -36,7 +36,7 @@ function getXpThresholdForLevel(level: number): number {
 /**
  * Get the required XP to reach the next level from current level
  */
-function getXpForNextLevel(currentLevel: number): number {
+export function getXpForNextLevel(currentLevel: number): number {
   return getXpThresholdForLevel(currentLevel + 1) - getXpThresholdForLevel(currentLevel);
 }
 

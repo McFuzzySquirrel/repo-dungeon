@@ -24,6 +24,10 @@ const TILE_SURFACE_FILL_ALPHA = 0.08;
 const TILE_SURFACE_TEXTURE_ALPHA = 0.68;
 const TILE_SURFACE_ZONE_TILE_SCALE = 0.5;
 const TILE_SURFACE_ROOM_TILE_SCALE = 0.75;
+const CAMERA_BASE_ZOOM_MIN = 0.85;
+const CAMERA_BASE_ZOOM_MAX = 1.8;
+const CAMERA_ROOM_ZOOM_MULTIPLIER = 1.14;
+const CAMERA_CORRIDOR_ZOOM_MULTIPLIER = 0.94;
 
 interface NavigationRegion {
   minX: number;
@@ -76,6 +80,8 @@ export class DungeonScene extends Phaser.Scene {
   private readonly ambientAudioEnabled = import.meta.env.VITE_ENABLE_AMBIENT_AUDIO === 'true';
   private navigationRegions: NavigationRegion[] = [];
   private pendingInteractionRequest = false;
+  private preferredCameraZoom = 1;
+  private cameraZoomTween: Phaser.Tweens.Tween | null = null;
 
   constructor() {
     super('DungeonScene');
@@ -160,6 +166,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.player) {
       this.cameras.main.startFollow(this.player);
       this.cameras.main.setBounds(0, 0, this.dungeon.width, this.dungeon.height);
+      this.applyContextualCameraZoom(true);
       this.lastPlayerPosition = { x: this.player.x, y: this.player.y };
       const currentRoom = this.player.getCurrentRoom();
       if (currentRoom?.zoneId) {
@@ -217,16 +224,14 @@ export class DungeonScene extends Phaser.Scene {
       if (this.textures.exists(presentation.tilesetTextureKey)) {
         this.add
           .tileSprite(
-            zone.bounds.x,
-            zone.bounds.y,
+              zone.bounds.x + zone.bounds.width / 2,
+              zone.bounds.y + zone.bounds.height / 2,
             zone.bounds.width,
             zone.bounds.height,
             presentation.tilesetTextureKey,
           )
-          .setOrigin(0)
           .setTileScale(TILE_SURFACE_ZONE_TILE_SCALE)
-          .setAlpha(TILE_SURFACE_TEXTURE_ALPHA)
-          .setTilePosition(zone.bounds.x, zone.bounds.y);
+            .setAlpha(TILE_SURFACE_TEXTURE_ALPHA);
       }
       this.add
         .rectangle(
@@ -268,16 +273,14 @@ export class DungeonScene extends Phaser.Scene {
       if (textureKey && this.textures.exists(textureKey)) {
         this.add
           .tileSprite(
-            room.position.x - room.size.width / 2,
-            room.position.y - room.size.height / 2,
+              room.position.x,
+              room.position.y,
             room.size.width,
             room.size.height,
             textureKey,
           )
-          .setOrigin(0)
           .setTileScale(TILE_SURFACE_ROOM_TILE_SCALE)
-          .setAlpha(TILE_SURFACE_TEXTURE_ALPHA)
-          .setTilePosition(room.position.x - room.size.width / 2, room.position.y - room.size.height / 2);
+            .setAlpha(TILE_SURFACE_TEXTURE_ALPHA);
       }
 
       // Room rectangle
@@ -356,6 +359,7 @@ export class DungeonScene extends Phaser.Scene {
       if (this.currentRoomId !== nextRoom.id) {
         this.currentRoomId = nextRoom.id;
         this.player.setCurrentRoom(nextRoom);
+        this.applyContextualCameraZoom();
         this.emitRoomEntryEvent(nextRoom);
       }
       return;
@@ -364,6 +368,7 @@ export class DungeonScene extends Phaser.Scene {
     if (this.currentRoomId !== null) {
       this.currentRoomId = null;
       this.player.setCurrentRoom(null);
+      this.applyContextualCameraZoom();
     }
   }
 
@@ -451,7 +456,7 @@ export class DungeonScene extends Phaser.Scene {
 
     this.activeRoomObjects = this.roomObjectsById.get(roomId) ?? [];
     this.activeContributors = this.contributorsById.get(roomId) ?? [];
-    this.activeRoomObjects.forEach((obj) => obj.setVisible(true));
+    this.activeRoomObjects.forEach((obj) => obj.setVisible(!obj.isCollected()));
     this.activeContributors.forEach((npc) => npc.setVisible(true));
   }
 
@@ -520,8 +525,12 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     if (nearest.type === 'room-object') {
+      const payload = nearest.object.collect();
+      if (!payload) {
+        return;
+      }
       this.interactionCount += 1;
-      this.emitRoomObjectInteraction(nearest.object.interact());
+      this.emitRoomObjectInteraction(payload);
       return;
     }
 
@@ -555,7 +564,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     const prompt = nearest.type === 'room-object'
-      ? `Press E to collect ${nearest.object.interact().title}`
+      ? `Press E to collect ${nearest.object.getPromptTitle()}`
       : `Press E to greet ${nearest.contributor.getInteractionPayload().contributor.login}`;
 
     this.interactionPrompt.setText(prompt);
@@ -606,6 +615,39 @@ export class DungeonScene extends Phaser.Scene {
 
   private emitContributorInteraction(payload: ContributorInteractionPayload): void {
     this.events.emit('contributorInteracted', payload);
+  }
+
+  setPreferredZoom(zoom: number): void {
+    this.preferredCameraZoom = Phaser.Math.Clamp(zoom, CAMERA_BASE_ZOOM_MIN, CAMERA_BASE_ZOOM_MAX);
+    this.applyContextualCameraZoom();
+  }
+
+  private applyContextualCameraZoom(immediate = false): void {
+    const camera = this.cameras.main;
+    const zoomMultiplier = this.currentRoomId ? CAMERA_ROOM_ZOOM_MULTIPLIER : CAMERA_CORRIDOR_ZOOM_MULTIPLIER;
+    const targetZoom = Phaser.Math.Clamp(
+      this.preferredCameraZoom * zoomMultiplier,
+      CAMERA_BASE_ZOOM_MIN,
+      CAMERA_BASE_ZOOM_MAX,
+    );
+
+    this.cameraZoomTween?.stop();
+    this.cameraZoomTween = null;
+
+    if (immediate || this.reducedMotion) {
+      camera.setZoom(targetZoom);
+      return;
+    }
+
+    this.cameraZoomTween = this.tweens.add({
+      targets: camera,
+      zoom: targetZoom,
+      duration: 240,
+      ease: 'Sine.easeInOut',
+      onComplete: () => {
+        this.cameraZoomTween = null;
+      },
+    });
   }
 
   private preloadAmbientAudioHooks(): void {
@@ -781,48 +823,52 @@ export class DungeonScene extends Phaser.Scene {
     label: string,
     accentColor: number,
   ): void {
-    // Approximate monospace 10 px character width; cap board width for very long names
-    const charW = 6.2;
-    const boardPadX = 9;
-    const boardPadY = 5;
-    const boardH = 10 + boardPadY * 2; // font-size + vertical padding
-    const boardW = Math.min(Math.max(label.length * charW + boardPadX * 2, 48), 160);
-    const postH = 14;
+    const displayLabel = label.length > 22 ? `${label.slice(0, 19)}...` : label;
+    const charW = 7.1;
+    const boardPadX = 12;
+    const boardPadY = 6;
+    const boardH = 12 + boardPadY * 2;
+    const boardW = Math.min(Math.max(displayLabel.length * charW + boardPadX * 2, 72), 196);
+    const postH = 18;
     const postW = 4;
 
-    // Positions (all in world space)
     const boardBottom = roomTopY - postH;
     const boardTop = boardBottom - boardH;
     const boardLeft = cx - boardW / 2;
 
     const g = this.add.graphics();
+    g.setDepth(40);
 
-    // Post — biome-tinted thin pillar
-    g.fillStyle(accentColor, 0.55);
+    g.fillStyle(0x000000, 0.28);
+    g.fillRect(cx - postW / 2 + 2, boardBottom + 2, postW, postH);
+
+    g.fillStyle(accentColor, 0.78);
     g.fillRect(cx - postW / 2, boardBottom, postW, postH);
+    g.fillRect(boardLeft + 6, boardBottom - 3, boardW - 12, 3);
 
-    // Subtle drop-shadow offset
-    g.fillStyle(0x000000, 0.35);
-    g.fillRect(boardLeft + 2, boardTop + 2, boardW, boardH);
+    g.fillStyle(0x000000, 0.45);
+    g.fillRoundedRect(boardLeft + 3, boardTop + 3, boardW, boardH, 4);
 
-    // Board border (biome accent)
-    g.fillStyle(accentColor, 0.7);
-    g.fillRect(boardLeft - 1, boardTop - 1, boardW + 2, boardH + 2);
+    g.fillStyle(accentColor, 0.95);
+    g.fillRoundedRect(boardLeft - 2, boardTop - 2, boardW + 4, boardH + 4, 5);
 
-    // Board fill — dark parchment
-    g.fillStyle(0x0e1420, 0.91);
-    g.fillRect(boardLeft, boardTop, boardW, boardH);
+    g.fillStyle(0x101722, 0.97);
+    g.fillRoundedRect(boardLeft, boardTop, boardW, boardH, 4);
 
-    // Label text centred on board
+    g.lineStyle(1, 0xf3e8c8, 0.22);
+    g.strokeRoundedRect(boardLeft + 2, boardTop + 2, boardW - 4, boardH - 4, 3);
+
     this.add
-      .text(cx, boardTop + boardH / 2, label, {
-        color: '#f0e6cc',
+      .text(cx, boardTop + boardH / 2, displayLabel, {
+        color: '#fff2d6',
         fontFamily: 'monospace',
-        fontSize: '10px',
+        fontSize: '12px',
+        fontStyle: 'bold',
         stroke: '#000000',
-        strokeThickness: 2,
+        strokeThickness: 3,
       })
-      .setOrigin(0.5, 0.5);
+      .setOrigin(0.5, 0.5)
+      .setDepth(41);
   }
 
   private decorateRoom(
@@ -912,6 +958,8 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private readonly handleSceneShutdown = (): void => {
+    this.cameraZoomTween?.stop();
+    this.cameraZoomTween = null;
     this.currentAmbientSound?.stop();
     this.currentAmbientSound?.destroy();
     this.currentAmbientSound = null;

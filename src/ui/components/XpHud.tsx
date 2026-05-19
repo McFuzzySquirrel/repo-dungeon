@@ -1,15 +1,15 @@
 import { useProgressionStore } from '@/store/progressionStore';
+import { getXpForNextLevel } from '@/game/systems/ProgressionTracker';
 import '@/ui/styles/xp-hud.css';
-
-const XP_PER_LEVEL = 100;
 
 export function XpHud() {
   const level = useProgressionStore((s) => s.level);
   const xpTowardNextLevel = useProgressionStore((s) => s.xpTowardNextLevel);
   const totalXp = useProgressionStore((s) => s.totalXp);
   const badgeCount = useProgressionStore((s) => s.unlockedBadges.length);
+  const xpRequired = getXpForNextLevel(level);
 
-  const pct = Math.min(100, Math.round((xpTowardNextLevel / XP_PER_LEVEL) * 100));
+  const pct = Math.min(100, Math.round((xpTowardNextLevel / xpRequired) * 100));
 
   return (
     <div className="xp-hud" aria-label={`Level ${level}, ${xpTowardNextLevel} XP toward next level`}>
@@ -22,7 +22,7 @@ export function XpHud() {
           <div className="xp-hud-bar-fill" style={{ width: `${pct}%` }} />
         </div>
         <div className="xp-hud-stats">
-          <span>{xpTowardNextLevel} / {XP_PER_LEVEL} XP</span>
+          <span>{xpTowardNextLevel} / {xpRequired} XP</span>
           {badgeCount > 0 && (
             <span className="xp-hud-badges" title="Badges unlocked">🏅 {badgeCount}</span>
           )}
