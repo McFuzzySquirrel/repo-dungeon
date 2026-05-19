@@ -44,3 +44,55 @@ body {
   font-size: 0.8rem;
   pointer-events: none;
 }
+
+.auth-panel {
+  width: min(100vw, 1100px);
+  margin: 0.75rem auto;
+  padding: 0.75rem;
+  border: 1px solid #384059;
+  border-radius: 0.5rem;
+  background: #111828;
+  display: grid;
+  gap: 0.5rem;
+}
+
+.auth-panel input {
+  width: min(22rem, 100%);
+  padding: 0.45rem 0.55rem;
+  border-radius: 0.35rem;
+  border: 1px solid #4a5474;
+  background: #0b1020;
+  color: #e6e6e6;
+}
+
+.auth-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.auth-actions button {
+  border: 1px solid #3f517d;
+  border-radius: 0.4rem;
+  background: #1a2440;
+  color: #f2f7ff;
+  padding: 0.4rem 0.65rem;
+  cursor: pointer;
+}
+
+.auth-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.auth-meta {
+  margin: 0;
+  font-size: 0.85rem;
+  color: #b6c1df;
+}
+
+.auth-error {
+  margin: 0;
+  color: #ff9ca2;
+  font-size: 0.85rem;
+}
