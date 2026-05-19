@@ -38,17 +38,17 @@ function isTouchUiPreferred(): boolean {
 }
 
 export function TouchControls() {
-  const { game, isReady } = useGameScene();
+  const { game } = useGameScene();
   const [isTouchUiEnabled, setIsTouchUiEnabled] = useState(() => isTouchUiPreferred());
   const [pressedDirections, setPressedDirections] = useState(INITIAL_DIRECTION_STATE);
 
   const dungeonScene = useMemo(() => {
-    if (!game || !isReady) {
+    if (!game) {
       return null;
     }
 
     return game.scene.getScene('DungeonScene') as unknown as TouchControllableScene | null;
-  }, [game, isReady]);
+  }, [game]);
 
   useEffect(() => {
     if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {

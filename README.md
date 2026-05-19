@@ -4,6 +4,8 @@ Turn a GitHub profile into a playable dungeon crawler.
 
 Each repository becomes a room. You explore the dungeon, open room info panels, collect loot, unlock badges, and jump to GitHub when you find something interesting.
 
+<img src="docs/screenshots/welcome-page.png" alt="Repo Dungeon welcome screen" width="720" />
+
 ## What you can do in-game
 
 - Generate a dungeon from GitHub repositories

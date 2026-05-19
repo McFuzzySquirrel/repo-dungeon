@@ -74,6 +74,22 @@ describe('TouchControls', () => {
     expect(screen.queryByLabelText('Touch controls')).not.toBeInTheDocument();
   });
 
+  it('renders for touch devices even before the broader game context reports ready', () => {
+    setTouchEnvironment({ coarsePointer: true, maxTouchPoints: 1 });
+    mockUseGameScene.mockReturnValue(makeGameContext({
+      game: makeMockGame({
+        setVirtualDirection: vi.fn(),
+        clearVirtualDirections: vi.fn(),
+        requestInteraction: vi.fn(),
+      }),
+      isReady: false,
+    }));
+
+    render(<TouchControls />);
+
+    expect(screen.getByLabelText('Touch controls')).toBeInTheDocument();
+  });
+
   it('sends direction and interact input to the active dungeon scene for coarse-pointer devices', () => {
     setTouchEnvironment({ coarsePointer: true, maxTouchPoints: 0 });
     const setVirtualDirection = vi.fn();
