@@ -235,7 +235,10 @@ function base64UrlEncode(input: Uint8Array): string {
     });
     base64 = btoa(binary);
   } else {
-    base64 = Buffer.from(input).toString('base64');
+    // btoa with Uint8Array fallback for environments without btoa
+    let binary = '';
+    input.forEach((value) => { binary += String.fromCharCode(value); });
+    base64 = btoa(binary);
   }
 
   return base64.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');

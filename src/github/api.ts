@@ -430,11 +430,11 @@ function computeBackoffDelayMs(rateLimit: GitHubRateLimitInfo | undefined, attem
 
 function decodeBase64ToText(content: string): string {
   const sanitized = content.replaceAll('\n', '');
-  if (typeof atob === 'function') {
-    return atob(sanitized);
-  }
-
-  return Buffer.from(sanitized, 'base64').toString('utf-8');
+  // atob is available in both browsers and Node 16+
+  const binary = atob(sanitized);
+  // Re-encode as proper UTF-8 text (handles multi-byte characters)
+  const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+  return new TextDecoder().decode(bytes);
 }
 
 function toGitHubApiError(error: unknown, isAuthenticated: boolean): GitHubApiError {
