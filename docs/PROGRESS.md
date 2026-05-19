@@ -3,7 +3,7 @@
 ## Current State
 **Phase**: Phase 6 — Desktop & Release hardening (Complete)
 **Status**: Complete  
-**Last Updated**: 2026-05-19T17:34:36Z  
+**Last Updated**: 2026-05-19T17:43:12Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Completed Tasks
@@ -168,4 +168,5 @@
 - Phase 5 polish/content scaffolding completed in commit `6eaa1ef`.
 - Phase 6 release hardening completed in commit `3e4f061`.
 - Post-completion documentation refresh (game-focused README) completed in commit `aea748a`.
+- Post-completion input-routing hotfix (typing vs gameplay shortcut conflicts) completed in commit `c51c149`.
 - Full-project validation currently passes (lint, typecheck, tests, build:web).
