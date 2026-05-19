@@ -110,8 +110,8 @@ export class DungeonScene extends Phaser.Scene {
         down: [Phaser.Input.Keyboard.KeyCodes.S, Phaser.Input.Keyboard.KeyCodes.DOWN],
         left: [Phaser.Input.Keyboard.KeyCodes.A, Phaser.Input.Keyboard.KeyCodes.LEFT],
         right: [Phaser.Input.Keyboard.KeyCodes.D, Phaser.Input.Keyboard.KeyCodes.RIGHT],
-      });
-      this.interactionKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E);
+      }, false);
+      this.interactionKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E, false);
 
       this.cursors = keys as {
         up: Phaser.Input.Keyboard.Key;

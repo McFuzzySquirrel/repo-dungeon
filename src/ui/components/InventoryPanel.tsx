@@ -5,6 +5,7 @@
 import { useState, useEffect } from 'react';
 import { useProgressionStore } from '@/store/progressionStore';
 import type { LootItem } from '@/game/systems/LootGenerator';
+import { isTypingInEditableTarget } from '@/ui/systems/keyboard';
 import '@/ui/styles/inventory-panel.css';
 
 type SortBy = 'date' | 'rarity' | 'language';
@@ -17,6 +18,10 @@ export function InventoryPanel() {
   // Toggle inventory with I key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (isTypingInEditableTarget(e.target)) {
+        return;
+      }
+
       if (e.key === 'i' || e.key === 'I') {
         e.preventDefault();
         setIsOpen((prev) => !prev);

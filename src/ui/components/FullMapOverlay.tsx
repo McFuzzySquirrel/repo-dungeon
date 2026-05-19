@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useGameScene } from '@/ui/context/GameContext';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
+import { isTypingInEditableTarget } from '@/ui/systems/keyboard';
 import '@/ui/styles/map.css';
 
 const BIOME_COLORS: Record<string, string> = {
@@ -45,6 +46,9 @@ export function FullMapOverlay() {
   // Handle M key to toggle
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTypingInEditableTarget(event.target)) {
+        return;
+      }
       if (event.key.toLowerCase() === 'm') {
         setIsOpen((prev) => !prev);
       }
@@ -61,6 +65,9 @@ export function FullMapOverlay() {
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      if (isTypingInEditableTarget(event.target)) {
+        return;
+      }
       if (event.key === 'Escape') {
         setIsOpen(false);
       }

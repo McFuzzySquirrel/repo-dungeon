@@ -67,6 +67,9 @@ export function GitHubAuthPanel() {
         onChange={(event) => {
           setUsernameInput(event.target.value);
         }}
+        onKeyDown={(event) => {
+          event.stopPropagation();
+        }}
         placeholder="octocat"
         autoComplete="off"
       />

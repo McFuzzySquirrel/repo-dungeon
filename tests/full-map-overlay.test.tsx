@@ -168,6 +168,30 @@ describe('FullMapOverlay Component', () => {
     });
   });
 
+  it('does not open when typing in an input field', async () => {
+    const dungeon = makeMockDungeon();
+    const playerState: PlayerState = {
+      position: { x: 150, y: 150 },
+      currentRoomId: 'room-1',
+      facingDirection: 'down',
+    };
+    const game = makeMockGame(dungeon, playerState);
+
+    const { container } = render(
+      <GameContextProvider game={game}>
+        <input aria-label="username-input" />
+        <FullMapOverlay />
+      </GameContextProvider>,
+    );
+
+    const input = screen.getByLabelText('username-input');
+    fireEvent.keyDown(input, { key: 'm' });
+
+    await waitFor(() => {
+      expect(container.querySelector('.fullmap-overlay')).not.toBeInTheDocument();
+    });
+  });
+
   it('closes when Escape key is pressed', async () => {
     const dungeon = makeMockDungeon();
     const playerState: PlayerState = {

@@ -65,6 +65,20 @@ describe('InventoryPanel', () => {
     expect(screen.getByRole('dialog', { name: 'Inventory' })).toBeInTheDocument();
   });
 
+  it('should not toggle inventory while typing in an input', () => {
+    render(
+      <>
+        <input aria-label="username-input" />
+        <InventoryPanel />
+      </>,
+    );
+
+    const input = screen.getByLabelText('username-input');
+    fireEvent.keyDown(input, { key: 'i' });
+
+    expect(screen.queryByRole('dialog', { name: 'Inventory' })).not.toBeInTheDocument();
+  });
+
   it('should allow sorting by rarity', () => {
     render(<InventoryPanel />);
     const openButton = screen.getByRole('button', { name: /Open inventory/ });
