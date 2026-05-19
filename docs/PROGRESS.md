@@ -2,9 +2,21 @@
 
 ## Current State
 **Phase**: Phase 6 — Desktop & Release hardening (Complete)
-**Status**: Complete  
-**Last Updated**: 2026-05-19T17:47:50Z  
+**Status**: Complete with post-release UX, auth-flow, mobile, and documentation updates  
+**Last Updated**: 2026-05-20T00:15:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
+
+## Post-Completion Updates
+- [x] Simplified GitHub entry UX so auth is owned once at the app shell, restored sessions are reflected on the welcome screen, and gameplay no longer renders a duplicate GitHub auth panel.
+  - Files: `src/ui/AppShell.tsx`, `src/ui/components/WelcomeScreen.tsx`, `src/ui/hooks/useGitHubAuth.ts`, `tests/app-shell.test.tsx`, `tests/welcome-screen-auth.test.tsx`
+- [x] Corrected GitHub OAuth token exchange architecture for deployed web builds and Electron.
+  - Files: `src/github/auth.ts`, `src/electron/main.ts`, `src/electron/preload.ts`, `scripts/github-oauth-proxy.mjs`, `.github/workflows/deploy-pages.yml`, `README.md`, `tests/github-auth-exchange.test.ts`, `tests/github-auth-errors.test.ts`
+- [x] Added friendlier auth/setup error messaging and deployment guidance for local development and GitHub Pages.
+  - Files: `src/ui/hooks/useGitHubAuth.ts`, `README.md`
+- [x] Added mobile touch controls for gameplay on coarse-pointer devices, including a virtual D-pad and interact button.
+  - Files: `src/game/scenes/DungeonScene.ts`, `src/ui/components/TouchControls.tsx`, `src/ui/AppShell.tsx`, `src/ui/styles/touch-controls.css`, `tests/dungeon-scene.test.ts`, `tests/touch-controls.test.tsx`
+- [x] Added README welcome-screen screenshot and updated player-facing documentation.
+  - Files: `README.md`, `docs/screenshots/welcome-page.png`
 
 ## Completed Tasks
 - [x] Phase 1, Task 1.1: Initialize Vite + Phaser + React + TypeScript scaffold (`project-architect`) [model: default]
@@ -170,4 +182,6 @@
 - Post-completion documentation refresh (game-focused README) completed in commit `aea748a`.
 - Post-completion input-routing hotfix (typing vs gameplay shortcut conflicts) completed in commit `c51c149`.
 - Post-completion dungeon reload/auth-start visibility fix completed in commit `4496bc9`.
+- Post-completion welcome/auth UX and GitHub Pages OAuth exchange updates landed across commits `6992c24` and `e70dbd9`.
+- Post-completion mobile touch controls landed in commit `9e8da9f`, with follow-up CI/build fixes in `2343fc1` and `0634de2`, and final mobile/render + README screenshot updates in `c49a90c`.
 - Full-project validation currently passes (lint, typecheck, tests, build:web).

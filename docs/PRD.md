@@ -18,6 +18,7 @@
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0 | 2026-05-19 | @McFuzzySquirrel | Initial PRD |
+| 1.1 | 2026-05-20 | GitHub Copilot | Align documentation with shipped web/Electron OAuth exchange flow, welcome-screen auth UX, and mobile touch controls |
 
 ---
 
@@ -108,7 +109,7 @@ Rationale:
 | Languages | `GET /repos/{owner}/{repo}/languages` |
 | Contributors | `GET /repos/{owner}/{repo}/contributors` |
 | Topics | Included in repo object (`topics` field) |
-| Token storage | Store OAuth token in `localStorage` (web) or Electron secure storage; never transmit to any server |
+| Token storage | Store OAuth tokens in browser storage for web builds or Electron secure storage for desktop; browser builds may use a separate server-side/serverless code-exchange endpoint while Electron exchanges in the main process |
 
 ### 5.3 Current Technology Versions (as of May 2026)
 
@@ -117,8 +118,8 @@ Rationale:
 | Phaser.js | 3.87.x | Stable; v4 is in early development, not production-ready |
 | React | 19.x | Stable; concurrent features available |
 | TypeScript | 5.x | Stable |
-| Electron | 30.x | Stable; use `contextIsolation: true`, `nodeIntegration: false` |
-| Vite | 5.x | Build tool; excellent Phaser + React integration |
+| Electron | 42.x | Stable; use `contextIsolation: true`, `nodeIntegration: false` |
+| Vite | 8.x | Build tool; excellent Phaser + React integration |
 | Tiled Map Editor | 1.11.x | Free tilemap editor for dungeon room templates |
 
 ### 5.4 Dungeon Generation Approach
@@ -178,13 +179,13 @@ From the player's perspective, success means:
 | Game Engine | Phaser.js | 3.87.x | 2D rendering, tilemap, scene management, input |
 | UI Layer | React | 19.x | Menus, overlays, info panels, HUD (outside canvas) |
 | Language | TypeScript | 5.x | Type safety, improved Copilot suggestions |
-| Build Tool | Vite | 5.x | Dev server, bundling, HMR |
-| Desktop | Electron | 30.x | Wraps web build for macOS/Windows/Linux |
+| Build Tool | Vite | 8.x | Dev server, bundling, HMR |
+| Desktop | Electron | 42.x | Wraps web build for macOS/Windows/Linux |
 | GitHub Auth | GitHub OAuth App | — | OAuth redirect flow, token management |
 | Map Editor | Tiled | 1.11.x | Room template authoring |
 | Asset Pipeline | TexturePacker / free-tex-packer | Latest | Sprite atlas generation |
 | State Management | Zustand | 4.x | Lightweight global state for player, dungeon, session |
-| HTTP Client | Octokit.js | 20.x | Typed GitHub REST API client |
+| HTTP Client | Octokit.js | 22.x | Typed GitHub REST API client |
 | Testing | Vitest + React Testing Library | Latest | Unit + component tests |
 | CI/CD | GitHub Actions | — | Build, test, deploy web build to GitHub Pages |
 | Deployment (web) | GitHub Pages | — | Free static hosting |
@@ -282,7 +283,7 @@ repo-dungeon/
 |----|-------------|----------|
 | FR-01 | Player can enter any GitHub username to generate a dungeon from public repos, without authentication | Must |
 | FR-02 | Player can authenticate via GitHub OAuth to include private repos and increase API rate limits | Must |
-| FR-03 | OAuth token is stored in localStorage (web) or Electron secure storage (desktop); never sent to any third-party server | Must |
+| FR-03 | OAuth token is stored in client-controlled browser storage (web) or Electron secure storage (desktop); browser builds may use a dedicated server-side/serverless token exchange endpoint, and secrets must never ship to the frontend bundle | Must |
 | FR-04 | Player can log out, clearing the stored token | Must |
 | FR-05 | If unauthenticated and rate limit is hit, display a friendly prompt to authenticate | Must |
 | FR-06 | On first visit, a tutorial/intro sequence walks the player through the game concept | Should |
@@ -297,7 +298,7 @@ repo-dungeon/
 | FR-10 | Each repo becomes exactly one room in the dungeon | Must |
 | FR-11 | A hub "Profile Room" is placed at the dungeon entrance, showing user avatar, bio, total public repos, total stars, followers | Must |
 | FR-12 | Corridors connect rooms within a zone; zones are connected by guarded "gateway" rooms | Must |
-| FR-13 | The dungeon map is generated client-side; no server required | Must |
+| FR-13 | The dungeon map is generated client-side; authenticated web builds may additionally rely on a secure token exchange endpoint for OAuth completion | Must |
 | FR-14 | Dungeons with ≤ 100 repos generate in under 10 seconds on a standard connection | Must |
 | FR-15 | If a user has > 100 repos, paginate API calls and show a loading progress bar | Should |
 | FR-16 | A seed can be saved/shared so the same username always produces the same dungeon layout | Should |
@@ -324,7 +325,7 @@ repo-dungeon/
 | FR-27 | Classes available (v1): **Explorer** (balanced, +discovery XP), **Archivist** (reads faster, more loot from READMEs), **Hacker** (unlocks hidden files/topics, +XP from code-heavy repos), **Contributor** (bonus XP when a repo has multiple contributors) | Should |
 | FR-28 | Player character is animated with pixel art walk cycles (4-direction) | Must |
 | FR-29 | Player navigates with WASD or arrow keys; gamepad support optional | Must |
-| FR-30 | On mobile/touch, a virtual D-pad is shown | Could |
+| FR-30 | On mobile/touch, a virtual D-pad and interaction affordance are shown during gameplay | Should |
 
 ### 8.5 Progression & Rewards
 
@@ -397,7 +398,7 @@ repo-dungeon/
 | NF-05 | GitHub API responses are cached in memory for the duration of a session to minimize requests | Must |
 | NF-06 | The web build bundle size is < 5 MB (excluding game assets) | Should |
 | NF-07 | Game runs at a stable 60 FPS on mid-range hardware (integrated GPU) | Should |
-| NF-08 | The application works fully client-side with no backend server required | Must |
+| NF-08 | Public-profile exploration works fully client-side; authenticated web builds may rely on a separate server-side or serverless token exchange endpoint | Must |
 | NF-09 | Graceful degradation: if a GitHub API call fails, the room still loads with a "data unavailable" state | Must |
 
 ---
@@ -406,8 +407,8 @@ repo-dungeon/
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| SP-01 | OAuth token is stored only in the client (localStorage or Electron secure storage); never logged or sent to any third-party | Must |
-| SP-02 | No backend server collects or stores user data; the app is purely client-side | Must |
+| SP-01 | OAuth tokens are stored only in client-controlled browser/Electron storage, never logged, and never embedded in the frontend bundle; browser code exchange may pass through a dedicated token exchange endpoint controlled by the deployer | Must |
+| SP-02 | Any optional web token exchange endpoint must remain stateless with respect to user repo data and must not persist OAuth tokens or other user data | Must |
 | SP-03 | The GitHub OAuth App uses the minimum required scopes: `read:user` (public data), `repo` (private repos, only requested if player explicitly opts in) | Must |
 | SP-04 | The Electron build uses `contextIsolation: true` and `nodeIntegration: false` | Must |
 | SP-05 | "Visit on GitHub" links open in a new tab using `rel="noopener noreferrer"` | Must |
@@ -417,10 +418,10 @@ repo-dungeon/
 | SP-09 | The application complies with GitHub's API Terms of Service regarding caching and display of data | Must |
 
 **Data Collected / Stored:**
-- OAuth access token (localStorage, user's own browser/device only)
+- OAuth access token (browser storage or Electron secure storage on the user's own device)
 - Visited room IDs per username (localStorage, user's own browser/device only)
 - Player class selection and XP (localStorage)
-- No data is transmitted to any server other than GitHub's own API
+- Public GitHub API requests are sent to GitHub; authenticated browser sign-in may also call a deployer-controlled token exchange endpoint to complete OAuth securely
 
 ---
 
@@ -658,7 +659,7 @@ No telemetry is collected in v1. Success is evaluated through:
 12. The web build runs in Chrome 120+, Firefox 120+, Safari 17+, Edge 120+ without errors
 13. The Electron desktop build installs and runs on macOS and Windows
 14. All React UI components pass WCAG 2.1 AA color contrast checks
-15. GitHub OAuth token is not transmitted to any server other than GitHub
+15. GitHub OAuth secrets are not exposed in the frontend bundle, and any web token exchange occurs only through a deployer-controlled secure endpoint
 
 ---
 
@@ -718,7 +719,7 @@ No telemetry is collected in v1. Success is evaluated through:
 | 3 | Should the dungeon layout change between sessions (re-roll)? | No: same username = same layout (deterministic seed) unless user chooses "Re-roll" |
 | 4 | What freely licensed pixel art asset packs are acceptable for v1? | Open Game Art (opengameart.org) CC0/CC-BY assets; documented in credits |
 | 5 | Should audio be included in v1 or deferred? | Include a minimal set: ambient dungeon music + 3 SFX (footstep, room entry, loot collect) |
-| 6 | Is the GitHub OAuth App client secret exposed in the Electron build? | Use PKCE flow (no client secret needed for public OAuth Apps); document this |
+| 6 | How is GitHub OAuth code exchange handled securely across Electron and GitHub Pages web builds? | Use Electron main-process exchange for desktop and a separately deployed server-side/serverless exchange endpoint for web; document both paths clearly |
 | 7 | Should the shareable URL work for private repos? | No — shared URLs only expose public dungeon layouts; private rooms show as "Secret Chamber" to visitors |
 | 8 | What is the minimum supported screen resolution? | 1024×600 for web; no hard minimum for desktop |
 

@@ -9,11 +9,12 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 ## What you can do in-game
 
 - Generate a dungeon from GitHub repositories
-- Move through rooms and corridors with keyboard controls
+- Move through rooms and corridors with keyboard controls on desktop or touch controls on mobile
 - Open repo room details (README, files, contributors, stats)
 - Use minimap/full map overlays while exploring
 - Pick a class and gain XP, loot, and badges
 - Track progress with visited room stamps and profile stats
+- Sign in from the welcome screen to include private repositories and higher GitHub API rate limits
 
 ## Quick start (play locally)
 
@@ -112,7 +113,9 @@ The GitHub Pages deployment workflow reads those variables at build time. The to
 
 ## Controls
 
-- **Move**: `WASD` or arrow keys
+- **Move (desktop)**: `WASD` or arrow keys
+- **Move (mobile/touch)**: on-screen D-pad shown during gameplay on touch devices
+- **Interact (mobile/touch)**: on-screen `Interact` button
 - **Full map**: `M`
 - **Room info / close panels**: `Tab`, `I`, `Esc`
 - **Inventory**: `I` (when progression UI is active)
@@ -126,6 +129,14 @@ The GitHub Pages deployment workflow reads those variables at build time. The to
 5. Confirm loot and badge unlock overlays appear during exploration.
 6. Click **Visit on GitHub** from room info and confirm it opens the repo.
 7. Reload and verify visited-room progress persists.
+
+### Mobile touch verification
+
+1. Open the GitHub Pages build on a phone or in a mobile device emulator.
+2. Start gameplay and confirm the on-screen D-pad and `Interact` button appear.
+3. Hold each direction and confirm the player keeps moving while pressed.
+4. Confirm diagonal movement works by pressing two directions together.
+5. Stand near a contributor or room object and confirm the `Interact` button triggers the same interaction flow as keyboard `E` on desktop.
 
 ## Project docs
 
