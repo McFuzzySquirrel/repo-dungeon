@@ -1,9 +1,9 @@
 # Project Progress
 
 ## Current State
-**Phase**: Phase 2 — Dungeon Generation  
+**Phase**: Phase 3 — Room Content (Ready to Start)
 **Status**: In Progress  
-**Last Updated**: 2026-05-19T13:30:00Z  
+**Last Updated**: 2026-05-19T17:45:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Completed Tasks
@@ -40,33 +40,41 @@
 - Replace static gameplay scene usage with generated dungeon rendering.
 - Implement interactive player movement and map UI contracts before room-content work.
 
-### 🔄 Phase 2: Dungeon Generation (In Progress)
-**Built so far**
-- Deterministic BSP-based dungeon generation core.
-- Language/topic/misc zone assignment and biome metadata mapping.
-- One-repo-per-room mapping with profile hub and gateway/corridor edge graph generation.
-- Unit tests validating determinism, zoning, room cardinality, and graph connectivity.
+### ✅ Phase 2: Dungeon Generation (Complete)
+**Built**
+- Deterministic BSP-based dungeon generation with language/topic/misc biome assignment and one-repo-per-room mapping.
+- Phaser scene rendering generated dungeon with room rectangles, corridors, and biome color coding.
+- Player entity with WASD/arrow key movement, collision detection, and room transition tracking.
+- Event emission for room entry and player movement (accessible to React UI).
+- Minimap HUD (corner-fixed, shows current/adjacent rooms, player position, room label).
+- Full-map overlay (M key toggle, zoom/pan, biome legend, entire dungeon view).
+- GameContext and hooks for React access to dungeon data and player state.
 
 **Tests/Checks Passed**
-- `npm run lint`
-- `npm run typecheck`
-- `npm run test -- --run`
-- `npm run build:web`
+- `npm run lint` ✓
+- `npm run typecheck` ✓
+- `npm run test -- --run` ✓ (52 new tests, all passing)
+- `npm run build:web` ✓
 
 **Next Phase Requires**
-- Phaser runtime scene for generated dungeon rendering.
-- Player entity + WASD/arrow movement.
-- Minimap HUD and full-map overlay (M key).
-- Then Phase 3 room-info surfaces can be attached to room-entry flow.
+- Room Info Panel (displays repo metadata on room entry).
+- NPC/contributor profiles (guest NPCs with dialogue).
+- Interactive content hooks for Phase 4 progression integration.
+
+## 🔄 Phase 3: Room Content (Ready to Start)
+
+- [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
+  - Files: `src/game/entities/Player.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/config/gameConfig.ts`, `src/game/scenes/BootScene.ts`, `tests/dungeon-scene.test.ts`
+- [x] Phase 2, Task 2.3–2.4: Build minimap HUD and full-map overlay UI with GameContext integration (`ui-experience-engineer`) [model: default]
+  - Files: `src/ui/context/GameContext.tsx`, `src/ui/components/Minimap.tsx`, `src/ui/components/FullMapOverlay.tsx`, `src/ui/styles/map.css`, `tests/minimap.test.tsx`, `tests/full-map-overlay.test.tsx`, `tests/game-context.test.tsx`
 
 ## Current Task
-- [ ] Phase 2, Task 2.2–2.4: Render generated dungeon in Phaser, add movement, minimap/full map (`phaser-gameplay-engineer` + `ui-experience-engineer`) [model: default]
+- [ ] Phase 3, Task 3.1–3.2: Build room info panel and NPC/contributor profiles (`ui-experience-engineer`) [model: default]
   - Status: Ready / not started
-  - Notes: Generation core is in place and tested.
+  - Notes: Player movement and map UI complete; ready for room interaction content.
 
 ## Remaining
-- [ ] Complete Phase 2 runtime gameplay/rendering deliverables.
-- [ ] Phase 3: Room Content.
+- [ ] Complete Phase 3 room content deliverables.
 - [ ] Phase 4: Progression System.
 - [ ] Phase 5: Polish & Biomes.
 - [ ] Phase 6: Desktop & Release hardening.
@@ -75,6 +83,7 @@
 - None
 
 ## Notes
-- Latest completed implementation commit: `4e38e2a`.
-- Prior completed Phase 1 implementation commits: `5188861`, `9f9c23a`, `6d5b4e8`.
-- No additional implementation work was started in this update; this change syncs project tracking state with completed work.
+- Latest completed Phase 2 implementation commits: phaser-gameplay-engineer (DungeonScene + Player) + ui-experience-engineer (Minimap + FullMapOverlay + GameContext).
+- Tech stack verified and stable (Phaser 3.55, React 18, Vite 4).
+- All tests passing (26 game tests + 52 UI tests = 78 total).
+- Phase 2 complete and ready to transition to Phase 3.
