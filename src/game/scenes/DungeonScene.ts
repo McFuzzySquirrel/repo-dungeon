@@ -42,6 +42,10 @@ interface DoorAnchor {
   rotation: number;
 }
 
+type DirectionKey = 'up' | 'down' | 'left' | 'right';
+
+type VirtualDirectionState = Record<DirectionKey, boolean>;
+
 /**
  * DungeonScene renders a procedurally generated dungeon and handles player exploration.
  *
@@ -82,6 +86,12 @@ export class DungeonScene extends Phaser.Scene {
   private pendingInteractionRequest = false;
   private preferredCameraZoom = 1;
   private cameraZoomTween: Phaser.Tweens.Tween | null = null;
+  private virtualDirectionState: VirtualDirectionState = {
+    up: false,
+    down: false,
+    left: false,
+    right: false,
+  };
 
   constructor() {
     super('DungeonScene');
@@ -192,10 +202,10 @@ export class DungeonScene extends Phaser.Scene {
 
     // Update player movement
     this.player.updateMovement({
-      up: { isDown: this.isAnyKeyDown(this.cursors.up) },
-      down: { isDown: this.isAnyKeyDown(this.cursors.down) },
-      left: { isDown: this.isAnyKeyDown(this.cursors.left) },
-      right: { isDown: this.isAnyKeyDown(this.cursors.right) },
+      up: { isDown: this.isDirectionActive('up') },
+      down: { isDown: this.isDirectionActive('down') },
+      left: { isDown: this.isDirectionActive('left') },
+      right: { isDown: this.isDirectionActive('right') },
     }, this.sprintKey?.isDown ? 1.6 : 1);
 
     this.player.constrainToNavigationRegions(this.navigationRegions);
@@ -605,7 +615,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private readonly handleGlobalInteractionKeyDown = (event: KeyboardEvent): void => {
     if (event.key.toLowerCase() === 'e') {
-      this.pendingInteractionRequest = true;
+      this.requestInteraction();
     }
   };
 
@@ -615,6 +625,21 @@ export class DungeonScene extends Phaser.Scene {
 
   private emitContributorInteraction(payload: ContributorInteractionPayload): void {
     this.events.emit('contributorInteracted', payload);
+  }
+
+  setVirtualDirection(direction: DirectionKey, isPressed: boolean): void {
+    this.virtualDirectionState[direction] = isPressed;
+  }
+
+  clearVirtualDirections(): void {
+    this.virtualDirectionState.up = false;
+    this.virtualDirectionState.down = false;
+    this.virtualDirectionState.left = false;
+    this.virtualDirectionState.right = false;
+  }
+
+  requestInteraction(): void {
+    this.pendingInteractionRequest = true;
   }
 
   setPreferredZoom(zoom: number): void {
@@ -648,6 +673,14 @@ export class DungeonScene extends Phaser.Scene {
         this.cameraZoomTween = null;
       },
     });
+  }
+
+  private isDirectionActive(direction: DirectionKey): boolean {
+    if (!this.cursors) {
+      return this.virtualDirectionState[direction];
+    }
+
+    return this.isAnyKeyDown(this.cursors[direction]) || this.virtualDirectionState[direction];
   }
 
   private preloadAmbientAudioHooks(): void {
@@ -958,6 +991,8 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private readonly handleSceneShutdown = (): void => {
+    this.clearVirtualDirections();
+    this.pendingInteractionRequest = false;
     this.cameraZoomTween?.stop();
     this.cameraZoomTween = null;
     this.currentAmbientSound?.stop();

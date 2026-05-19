@@ -1,4 +1,71 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
+
+vi.mock('phaser', () => {
+  class MockScene {
+    events = {
+      emit: vi.fn(),
+      once: vi.fn(),
+      on: vi.fn(),
+      off: vi.fn(),
+    };
+  }
+
+  class MockArcadeSprite {
+    body = {
+      setCollideWorldBounds: vi.fn(),
+      setBounce: vi.fn(),
+      setDrag: vi.fn(),
+      setMaxSpeed: vi.fn(),
+      setVelocity: vi.fn(),
+    };
+  }
+
+  class MockContainer {}
+
+  return {
+    default: {
+      Scene: MockScene,
+      Physics: {
+        Arcade: {
+          Sprite: MockArcadeSprite,
+        },
+      },
+      GameObjects: {
+        Container: MockContainer,
+      },
+      Input: {
+        Keyboard: {
+          KeyCodes: {
+            W: 87,
+            A: 65,
+            S: 83,
+            D: 68,
+            E: 69,
+            UP: 38,
+            DOWN: 40,
+            LEFT: 37,
+            RIGHT: 39,
+            SHIFT: 16,
+          },
+          JustDown: vi.fn(() => false),
+        },
+      },
+      Math: {
+        Clamp: (value: number, min: number, max: number) => Math.min(Math.max(value, min), max),
+        Distance: {
+          Between: (x1: number, y1: number, x2: number, y2: number) => Math.hypot(x2 - x1, y2 - y1),
+        },
+      },
+      Scenes: {
+        Events: {
+          SHUTDOWN: 'shutdown',
+        },
+      },
+    },
+  };
+});
+
+import { DungeonScene } from '@/game/scenes/DungeonScene';
 import type { DungeonRoomNode } from '@/game/systems/dungeonTypes';
 import type { GitHubRepoSummary } from '@/github/types';
 import { DungeonGenerator } from '@/game/systems/DungeonGenerator';
@@ -202,6 +269,54 @@ describe('DungeonScene Integration', () => {
   });
 
   describe('Player Movement Logic', () => {
+    it('can merge virtual directions with keyboard input and clear them', () => {
+      const scene = new DungeonScene() as unknown as {
+        setVirtualDirection: (direction: 'up' | 'down' | 'left' | 'right', isPressed: boolean) => void;
+        clearVirtualDirections: () => void;
+        isDirectionActive: (direction: 'up' | 'down' | 'left' | 'right') => boolean;
+        cursors: {
+          up: Array<{ isDown: boolean }>;
+          down: Array<{ isDown: boolean }>;
+          left: Array<{ isDown: boolean }>;
+          right: Array<{ isDown: boolean }>;
+        };
+      };
+
+      scene.cursors = {
+        up: [{ isDown: false }],
+        down: [{ isDown: false }],
+        left: [{ isDown: true }],
+        right: [{ isDown: false }],
+      };
+
+      scene.setVirtualDirection('up', true);
+      scene.setVirtualDirection('right', true);
+
+      expect(scene.isDirectionActive('up')).toBe(true);
+      expect(scene.isDirectionActive('left')).toBe(true);
+      expect(scene.isDirectionActive('right')).toBe(true);
+      expect(scene.isDirectionActive('down')).toBe(false);
+
+      scene.clearVirtualDirections();
+
+      expect(scene.isDirectionActive('up')).toBe(false);
+      expect(scene.isDirectionActive('left')).toBe(true);
+      expect(scene.isDirectionActive('right')).toBe(false);
+    });
+
+    it('can queue touch interactions through the shared interaction request path', () => {
+      const scene = new DungeonScene() as unknown as {
+        requestInteraction: () => void;
+        pendingInteractionRequest: boolean;
+      };
+
+      expect(scene.pendingInteractionRequest).toBe(false);
+
+      scene.requestInteraction();
+
+      expect(scene.pendingInteractionRequest).toBe(true);
+    });
+
     it('can track player position state', () => {
       const position = { x: 100, y: 200 };
       const roomId = 'room:test';

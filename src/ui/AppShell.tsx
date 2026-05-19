@@ -10,6 +10,7 @@ import { InventoryPanel } from '@/ui/components/InventoryPanel';
 import { AudioControls } from '@/ui/components/AudioControls';
 import { GamePolishOverlay } from '@/ui/components/GamePolishOverlay';
 import { GameHudControls } from '@/ui/components/GameHudControls';
+import { TouchControls } from '@/ui/components/TouchControls';
 import { WelcomeScreen } from '@/ui/components/WelcomeScreen';
 import { HelpOverlay } from '@/ui/components/HelpOverlay';
 import { ProgressionController } from '@/ui/components/ProgressionController';
@@ -106,6 +107,7 @@ export function AppShell() {
             <AudioControls />
             <GamePolishOverlay />
             <XpHud />
+            <TouchControls />
             <GameHudControls onOpenHelp={openHelp} onOpenHome={() => setShowWelcome(true)} />
           </>
         )}

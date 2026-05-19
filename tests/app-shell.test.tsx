@@ -40,6 +40,7 @@ vi.mock('@/ui/components/GameHudControls', () => ({
     <button type="button" onClick={onOpenHome}>Home</button>
   ),
 }));
+vi.mock('@/ui/components/TouchControls', () => ({ TouchControls: () => <div>TouchControls</div> }));
 vi.mock('@/ui/components/HelpOverlay', () => ({ HelpOverlay: () => <div>HelpOverlay</div> }));
 vi.mock('@/ui/components/WelcomeScreen', () => ({
   WelcomeScreen: ({ auth, onStart }: { auth: UseGitHubAuthResult; onStart: () => void }) => (
