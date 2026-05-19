@@ -13,6 +13,15 @@ const __dirname = path.dirname(__filename);
 const isDev = !app.isPackaged;
 const devServerUrl = process.env.VITE_DEV_SERVER_URL;
 
+function isSafeExternalUrl(candidate: string): boolean {
+  try {
+    const parsed = new URL(candidate);
+    return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+  } catch {
+    return false;
+  }
+}
+
 function registerSecureStorageHandlers(): void {
   ipcMain.handle('secure-storage:get-item', (_event, key: string) => getSecureStorageItem(key));
   ipcMain.handle('secure-storage:set-item', (_event, key: string, value: string) =>
@@ -39,8 +48,17 @@ async function createMainWindow(): Promise<void> {
   });
 
   window.webContents.setWindowOpenHandler(({ url }) => {
+    if (!isSafeExternalUrl(url)) {
+      return { action: 'deny' };
+    }
     void shell.openExternal(url);
     return { action: 'deny' };
+  });
+
+  window.webContents.on('will-navigate', (event, url) => {
+    if (!isSafeExternalUrl(url)) {
+      event.preventDefault();
+    }
   });
 
   if (isDev && devServerUrl) {

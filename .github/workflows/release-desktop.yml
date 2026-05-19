@@ -1,0 +1,73 @@
+name: Release Desktop Builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-desktop-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    name: Verify Release Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run release:verify
+
+  package-desktop:
+    name: Package (${{ matrix.label }})
+    needs: verify
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macOS
+            command: npm run package:electron:mac
+          - os: windows-latest
+            label: Windows
+            command: npm run package:electron:win
+          - os: ubuntu-latest
+            label: Linux
+            command: npm run package:electron:linux
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: ${{ matrix.command }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.label }}-artifacts
+          path: release/**
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    name: Publish Tagged Release
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: package-desktop
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-artifacts
+      - uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: release-artifacts/**/*

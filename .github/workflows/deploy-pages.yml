@@ -16,9 +16,24 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  verify:
+    name: Verify Release Gates
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test -- --run
+
   build:
     name: Build Web Artifact
     runs-on: ubuntu-latest
+    needs: verify
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
@@ -31,6 +46,7 @@ jobs:
         env:
           VITE_BASE_PATH: /repo-dungeon/
         run: npm run build:web
+      - run: npm run check:bundle-size
       - uses: actions/upload-pages-artifact@v3
         with:
           path: dist

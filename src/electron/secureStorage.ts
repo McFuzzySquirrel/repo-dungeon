@@ -21,7 +21,7 @@ async function readStore(): Promise<StoreShape> {
 
 async function writeStore(store: StoreShape): Promise<void> {
   await fs.mkdir(app.getPath('userData'), { recursive: true });
-  await fs.writeFile(getStorePath(), JSON.stringify(store), 'utf-8');
+  await fs.writeFile(getStorePath(), JSON.stringify(store), { encoding: 'utf-8', mode: 0o600 });
 }
 
 function encrypt(value: string): string {

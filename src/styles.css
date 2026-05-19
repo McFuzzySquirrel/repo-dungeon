@@ -14,6 +14,15 @@ body {
   background: #10131a;
 }
 
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #7fb2ff;
+  outline-offset: 2px;
+}
+
 #root {
   min-height: 100vh;
 }
@@ -140,4 +149,15 @@ body {
   border-radius: 0.35rem;
   background: rgb(12 18 32 / 88%);
   font-size: 0.8rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

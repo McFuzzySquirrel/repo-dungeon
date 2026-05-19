@@ -1,18 +1,25 @@
 /** @type {import('electron-builder').Configuration} */
+const [repoOwner = 'McFuzzySquirrel', repoName = 'repo-dungeon'] = (process.env.GITHUB_REPOSITORY ?? '')
+  .split('/')
+  .filter(Boolean);
+
 const config = {
   appId: 'com.repodungeon.app',
   productName: 'Repo Dungeon',
+  artifactName: '${productName}-${version}-${os}-${arch}.${ext}',
   directories: {
-    app: '.',
     output: 'release',
     buildResources: 'build',
   },
+  asar: true,
+  compression: 'maximum',
   files: ['dist/**', 'dist-electron/**', 'package.json'],
   extraMetadata: {
     main: 'dist-electron/main.js',
   },
   mac: {
     category: 'public.app-category.games',
+    hardenedRuntime: true,
     target: ['dmg', 'zip'],
   },
   win: {
@@ -25,8 +32,8 @@ const config = {
   publish: [
     {
       provider: 'github',
-      owner: 'REPLACE_WITH_OWNER',
-      repo: 'REPLACE_WITH_REPO',
+      owner: repoOwner,
+      repo: repoName,
     },
   ],
 };

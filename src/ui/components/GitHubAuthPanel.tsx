@@ -4,6 +4,7 @@ import { useGitHubData } from '@/ui/hooks/useGitHubData';
 import { useSessionStore } from '@/store/sessionStore';
 import { useGameScene } from '@/ui/context/GameContext';
 import { encodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
+import { copyTextToClipboard } from '@/ui/systems/clipboard';
 
 export function GitHubAuthPanel() {
   const usernameInput = useSessionStore((state) => state.usernameInput);
@@ -50,7 +51,7 @@ export function GitHubAuthPanel() {
     );
 
     try {
-      await navigator.clipboard.writeText(shareUrl);
+      await copyTextToClipboard(shareUrl);
       setShareMessage('Share URL copied to clipboard.');
     } catch {
       setShareMessage(`Share URL: ${shareUrl}`);
@@ -104,7 +105,11 @@ export function GitHubAuthPanel() {
       {auth.errorMessage ? <p className="auth-error">{auth.errorMessage}</p> : null}
       {data.errorMessage ? <p className="auth-error">{data.errorMessage}</p> : null}
       {lastFetchError ? <p className="auth-error">{lastFetchError}</p> : null}
-      {shareMessage ? <p className="auth-meta">{shareMessage}</p> : null}
+      {shareMessage ? (
+        <p className="auth-meta" role="status" aria-live="polite">
+          {shareMessage}
+        </p>
+      ) : null}
       {data.shouldPromptLogin ? <p className="auth-error">Rate limit reached. Authenticate to continue.</p> : null}
     </section>
   );
