@@ -19,6 +19,21 @@ const BIOME_COLORS: Record<string, number> = {
   'lost-archive': 0x6b5d4f, // Sepia
 };
 
+const CORRIDOR_HALF_WIDTH = 18;
+
+interface NavigationRegion {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+interface DoorAnchor {
+  x: number;
+  y: number;
+  rotation: number;
+}
+
 /**
  * DungeonScene renders a procedurally generated dungeon and handles player exploration.
  *
@@ -32,10 +47,10 @@ export class DungeonScene extends Phaser.Scene {
   private player: Player | null = null;
   private dungeon: DungeonMap | null = null;
   private cursors: {
-    up: Phaser.Input.Keyboard.Key;
-    down: Phaser.Input.Keyboard.Key;
-    left: Phaser.Input.Keyboard.Key;
-    right: Phaser.Input.Keyboard.Key;
+    up: Phaser.Input.Keyboard.Key[];
+    down: Phaser.Input.Keyboard.Key[];
+    left: Phaser.Input.Keyboard.Key[];
+    right: Phaser.Input.Keyboard.Key[];
   } | null = null;
   private currentRoomId: string | null = null;
   private roomById: Map<string, DungeonRoomNode> = new Map();
@@ -45,13 +60,18 @@ export class DungeonScene extends Phaser.Scene {
   private activeRoomObjects: RoomObject[] = [];
   private activeContributors: NPCContributor[] = [];
   private interactionKey: Phaser.Input.Keyboard.Key | null = null;
+  private sprintKey: Phaser.Input.Keyboard.Key | null = null;
   private currentAmbientSound: Phaser.Sound.BaseSound | null = null;
   private reducedMotion = false;
   private tutorialMessage: Phaser.GameObjects.Text | null = null;
+  private interactionPrompt: Phaser.GameObjects.Text | null = null;
   private tutorialStep = 0;
   private tutorialCompleted = false;
   private lastPlayerPosition: { x: number; y: number } | null = null;
   private interactionCount = 0;
+  private readonly ambientAudioEnabled = import.meta.env.VITE_ENABLE_AMBIENT_AUDIO === 'true';
+  private navigationRegions: NavigationRegion[] = [];
+  private pendingInteractionRequest = false;
 
   constructor() {
     super('DungeonScene');
@@ -59,8 +79,7 @@ export class DungeonScene extends Phaser.Scene {
 
   preload(): void {
     this.reducedMotion = isReducedMotionPreferred();
-    this.ensureBiomePlaceholderTextures();
-    this.ensureEntityPlaceholderTextures();
+    this.preloadVisualAssets();
     this.preloadAmbientAudioHooks();
   }
 
@@ -83,6 +102,9 @@ export class DungeonScene extends Phaser.Scene {
     for (const zone of this.dungeon.zones) {
       this.zoneById.set(zone.id, zone);
     }
+    this.navigationRegions = this.buildNavigationRegions();
+    this.ensureBiomePlaceholderTextures();
+    this.ensureEntityPlaceholderTextures();
 
     // Set world bounds
     this.physics.world.setBounds(0, 0, this.dungeon.width, this.dungeon.height);
@@ -105,20 +127,29 @@ export class DungeonScene extends Phaser.Scene {
 
     // Set up input
     if (this.input.keyboard) {
-      const keys = this.input.keyboard.addKeys({
-        up: [Phaser.Input.Keyboard.KeyCodes.W, Phaser.Input.Keyboard.KeyCodes.UP],
-        down: [Phaser.Input.Keyboard.KeyCodes.S, Phaser.Input.Keyboard.KeyCodes.DOWN],
-        left: [Phaser.Input.Keyboard.KeyCodes.A, Phaser.Input.Keyboard.KeyCodes.LEFT],
-        right: [Phaser.Input.Keyboard.KeyCodes.D, Phaser.Input.Keyboard.KeyCodes.RIGHT],
-      }, false);
-      this.interactionKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E, false);
-
-      this.cursors = keys as {
-        up: Phaser.Input.Keyboard.Key;
-        down: Phaser.Input.Keyboard.Key;
-        left: Phaser.Input.Keyboard.Key;
-        right: Phaser.Input.Keyboard.Key;
+      const keyboard = this.input.keyboard;
+      const keys = {
+        up: [
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.W, false),
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP, false),
+        ],
+        down: [
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.S, false),
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN, false),
+        ],
+        left: [
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.A, false),
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.LEFT, false),
+        ],
+        right: [
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.D, false),
+          keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.RIGHT, false),
+        ],
       };
+      this.interactionKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.E, false);
+      this.sprintKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SHIFT, false);
+
+      this.cursors = keys;
     }
 
     // Set up camera to follow the player
@@ -138,6 +169,7 @@ export class DungeonScene extends Phaser.Scene {
     this.applyAudioSettings();
     if (typeof window !== 'undefined') {
       window.addEventListener('repo-dungeon:audio-settings-changed', this.applyAudioSettings);
+      window.addEventListener('keydown', this.handleGlobalInteractionKeyDown);
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, this.handleSceneShutdown);
   }
@@ -148,23 +180,20 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     // Update player movement
-    this.player.updateMovement(this.cursors);
+    this.player.updateMovement({
+      up: { isDown: this.isAnyKeyDown(this.cursors.up) },
+      down: { isDown: this.isAnyKeyDown(this.cursors.down) },
+      left: { isDown: this.isAnyKeyDown(this.cursors.left) },
+      right: { isDown: this.isAnyKeyDown(this.cursors.right) },
+    }, this.sprintKey?.isDown ? 1.6 : 1);
 
-    // Constrain player to current room bounds
-    const currentRoom = this.player.getCurrentRoom();
-    if (currentRoom) {
-      const minX = currentRoom.position.x - currentRoom.size.width / 2;
-      const minY = currentRoom.position.y - currentRoom.size.height / 2;
-      const maxX = currentRoom.position.x + currentRoom.size.width / 2;
-      const maxY = currentRoom.position.y + currentRoom.size.height / 2;
-
-      this.player.constrainToRoomBounds(minX, minY, maxX, maxY);
-    }
+    this.player.constrainToNavigationRegions(this.navigationRegions);
 
     // Check for room transitions
     this.checkRoomTransitions();
     this.updateActiveContributors(delta);
     this.handleInteractionInput();
+    this.updateInteractionPrompt();
     this.advanceTutorialProgress();
 
     // Emit player state update
@@ -209,6 +238,19 @@ export class DungeonScene extends Phaser.Scene {
       const zone = zoneId ? this.zoneById.get(zoneId) : null;
       const color = zone ? BIOME_COLORS[zone.biome.id] : 0x52a9ff;
       const presentation = zone ? getBiomePresentation(zone.biome.id) : null;
+      const textureKey = presentation?.tilesetTextureKey;
+
+      if (textureKey && this.textures.exists(textureKey)) {
+        this.add
+          .tileSprite(
+            room.position.x,
+            room.position.y,
+            room.size.width,
+            room.size.height,
+            textureKey,
+          )
+          .setAlpha(0.38);
+      }
 
       // Room rectangle
       const graphics = this.add.graphics();
@@ -259,6 +301,8 @@ export class DungeonScene extends Phaser.Scene {
         }
       }
     }
+
+    this.renderDoorways();
   }
 
   /**
@@ -267,6 +311,8 @@ export class DungeonScene extends Phaser.Scene {
   private checkRoomTransitions(): void {
     if (!this.player || !this.dungeon) return;
 
+    let nextRoom: DungeonRoomNode | null = null;
+
     for (const room of this.dungeon.rooms) {
       const minX = room.position.x - room.size.width / 2;
       const minY = room.position.y - room.size.height / 2;
@@ -274,13 +320,23 @@ export class DungeonScene extends Phaser.Scene {
       const maxY = room.position.y + room.size.height / 2;
 
       if (this.player.isInRegion(minX, minY, maxX, maxY)) {
-        if (this.currentRoomId !== room.id) {
-          this.currentRoomId = room.id;
-          this.player.setCurrentRoom(room);
-          this.emitRoomEntryEvent(room);
-        }
-        return;
+        nextRoom = room;
+        break;
       }
+    }
+
+    if (nextRoom) {
+      if (this.currentRoomId !== nextRoom.id) {
+        this.currentRoomId = nextRoom.id;
+        this.player.setCurrentRoom(nextRoom);
+        this.emitRoomEntryEvent(nextRoom);
+      }
+      return;
+    }
+
+    if (this.currentRoomId !== null) {
+      this.currentRoomId = null;
+      this.player.setCurrentRoom(null);
     }
   }
 
@@ -346,15 +402,13 @@ export class DungeonScene extends Phaser.Scene {
     this.contributorsById.clear();
 
     for (const room of this.dungeon.rooms) {
-      if (room.type !== 'repo' || !room.zoneId) {
-        continue;
-      }
-
       const zone = this.zoneById.get(room.zoneId);
       const biomeId = zone?.biome.id ?? 'lost-archive';
 
       const roomObjects = RoomObject.spawnForRoom(this, room, biomeId, this.reducedMotion);
-      const contributors = NPCContributor.spawnForRoom(this, room, biomeId, this.reducedMotion);
+      const contributors = room.type === 'repo'
+        ? NPCContributor.spawnForRoom(this, room, biomeId, this.reducedMotion)
+        : [];
 
       roomObjects.forEach((obj) => obj.setVisible(false));
       contributors.forEach((npc) => npc.setVisible(false));
@@ -380,27 +434,144 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
-  private handleInteractionInput(): void {
-    if (!this.player || !this.interactionKey || !Phaser.Input.Keyboard.JustDown(this.interactionKey)) {
-      return;
-    }
-
-    const fromX = this.player.x;
-    const fromY = this.player.y;
-
-    const roomObject = this.activeRoomObjects.find((candidate) => candidate.canInteractFrom(fromX, fromY));
-    if (roomObject) {
-      this.interactionCount += 1;
-      this.emitRoomObjectInteraction(roomObject.interact());
-      return;
-    }
-
-    const contributor = this.activeContributors.find((candidate) => candidate.canInteractFrom(fromX, fromY));
-    if (contributor) {
-      this.interactionCount += 1;
-      this.emitContributorInteraction(contributor.getInteractionPayload());
-    }
+  private isAnyKeyDown(keys: Phaser.Input.Keyboard.Key[]): boolean {
+    return keys.some((key) => key.isDown);
   }
+
+  private buildNavigationRegions(): NavigationRegion[] {
+    if (!this.dungeon) {
+      return [];
+    }
+
+    const regions: NavigationRegion[] = [];
+
+    for (const room of this.dungeon.rooms) {
+      regions.push({
+        minX: room.position.x - room.size.width / 2,
+        minY: room.position.y - room.size.height / 2,
+        maxX: room.position.x + room.size.width / 2,
+        maxY: room.position.y + room.size.height / 2,
+      });
+    }
+
+    for (const edge of this.dungeon.edges) {
+      if (edge.path.length < 2) {
+        continue;
+      }
+
+      for (let i = 0; i < edge.path.length - 1; i += 1) {
+        const from = edge.path[i];
+        const to = edge.path[i + 1];
+
+        regions.push({
+          minX: Math.min(from.x, to.x) - CORRIDOR_HALF_WIDTH,
+          minY: Math.min(from.y, to.y) - CORRIDOR_HALF_WIDTH,
+          maxX: Math.max(from.x, to.x) + CORRIDOR_HALF_WIDTH,
+          maxY: Math.max(from.y, to.y) + CORRIDOR_HALF_WIDTH,
+        });
+      }
+    }
+
+    return regions;
+  }
+
+  private handleInteractionInput(): void {
+    if (!this.player || !this.interactionKey) {
+      return;
+    }
+
+    const interactionRequested = Phaser.Input.Keyboard.JustDown(this.interactionKey) || this.pendingInteractionRequest;
+    if (!interactionRequested) {
+      return;
+    }
+
+    this.pendingInteractionRequest = false;
+
+    const nearest = this.findNearestInteractable(this.player.x, this.player.y);
+    if (!nearest) {
+      return;
+    }
+
+    if (nearest.type === 'room-object') {
+      this.interactionCount += 1;
+      this.emitRoomObjectInteraction(nearest.object.interact());
+      return;
+    }
+
+    this.interactionCount += 1;
+    this.emitContributorInteraction(nearest.contributor.getInteractionPayload());
+  }
+
+  private updateInteractionPrompt(): void {
+    if (!this.player) {
+      this.interactionPrompt?.setVisible(false);
+      return;
+    }
+
+    const nearest = this.findNearestInteractable(this.player.x, this.player.y);
+    if (!nearest) {
+      this.interactionPrompt?.setVisible(false);
+      return;
+    }
+
+    if (!this.interactionPrompt) {
+      this.interactionPrompt = this.add
+        .text(12, 42, '', {
+          color: '#e6f4ff',
+          backgroundColor: '#0b1629d9',
+          padding: { x: 8, y: 5 },
+          fontFamily: 'monospace',
+          fontSize: '11px',
+        })
+        .setScrollFactor(0)
+        .setDepth(1001);
+    }
+
+    const prompt = nearest.type === 'room-object'
+      ? `Press E to collect ${nearest.object.interact().title}`
+      : `Press E to greet ${nearest.contributor.getInteractionPayload().contributor.login}`;
+
+    this.interactionPrompt.setText(prompt);
+    this.interactionPrompt.setVisible(true);
+  }
+
+  private findNearestInteractable(playerX: number, playerY: number):
+    | { type: 'room-object'; object: RoomObject; distance: number }
+    | { type: 'contributor'; contributor: NPCContributor; distance: number }
+    | null {
+    let nearest:
+      | { type: 'room-object'; object: RoomObject; distance: number }
+      | { type: 'contributor'; contributor: NPCContributor; distance: number }
+      | null = null;
+
+    for (const candidate of this.activeRoomObjects) {
+      if (!candidate.canInteractFrom(playerX, playerY)) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(playerX, playerY, candidate.x, candidate.y);
+      if (!nearest || distance < nearest.distance) {
+        nearest = { type: 'room-object', object: candidate, distance };
+      }
+    }
+
+    for (const candidate of this.activeContributors) {
+      if (!candidate.canInteractFrom(playerX, playerY)) {
+        continue;
+      }
+      const distance = Phaser.Math.Distance.Between(playerX, playerY, candidate.x, candidate.y);
+      if (!nearest || distance < nearest.distance) {
+        nearest = { type: 'contributor', contributor: candidate, distance };
+      }
+    }
+
+    return nearest;
+  }
+
+  private readonly handleGlobalInteractionKeyDown = (event: KeyboardEvent): void => {
+    if (event.key.toLowerCase() === 'e') {
+      this.pendingInteractionRequest = true;
+    }
+  };
 
   private emitRoomObjectInteraction(payload: RoomObjectInteractionPayload): void {
     this.events.emit('roomObjectInteracted', payload);
@@ -411,12 +582,32 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private preloadAmbientAudioHooks(): void {
+    if (!this.ambientAudioEnabled) {
+      return;
+    }
+
     for (const presentation of getAllBiomePresentations()) {
       this.load.audio(presentation.ambientAudio.key, presentation.ambientAudio.path);
     }
   }
 
+  private preloadVisualAssets(): void {
+    for (const presentation of getAllBiomePresentations()) {
+      if (presentation.tilesetAssetPath) {
+        this.load.image(presentation.tilesetTextureKey, presentation.tilesetAssetPath);
+      }
+    }
+
+    this.load.image('sprite-player', '/assets/sprites/player.svg');
+    this.load.image('sprite-door', '/assets/sprites/door.svg');
+    this.load.image('npc-contributor', '/assets/sprites/npc-contributor.svg');
+  }
+
   private updateAmbientForBiome(biomeId?: string): void {
+    if (!this.ambientAudioEnabled) {
+      return;
+    }
+
     if (!biomeId) {
       return;
     }
@@ -465,6 +656,16 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private ensureEntityPlaceholderTextures(): void {
+    if (!this.textures.exists('player-placeholder')) {
+      const graphics = this.make.graphics();
+      graphics.fillStyle(0x4a90e2, 1);
+      graphics.fillCircle(8, 8, 7);
+      graphics.lineStyle(2, 0xffffff, 0.8);
+      graphics.strokeCircle(8, 8, 7);
+      graphics.generateTexture('player-placeholder', 16, 16);
+      graphics.destroy();
+    }
+
     if (!this.textures.exists('npc-contributor')) {
       const graphics = this.make.graphics();
       graphics.fillStyle(0xffffff, 1);
@@ -472,6 +673,67 @@ export class DungeonScene extends Phaser.Scene {
       graphics.generateTexture('npc-contributor', 14, 14);
       graphics.destroy();
     }
+
+    if (!this.textures.exists('sprite-door')) {
+      const graphics = this.make.graphics();
+      graphics.fillStyle(0xb58a5a, 1);
+      graphics.fillRect(0, 0, 10, 14);
+      graphics.fillStyle(0x6b4a2e, 1);
+      graphics.fillRect(1, 1, 8, 12);
+      graphics.generateTexture('sprite-door', 10, 14);
+      graphics.destroy();
+    }
+  }
+
+  private renderDoorways(): void {
+    if (!this.dungeon) {
+      return;
+    }
+
+    for (const edge of this.dungeon.edges) {
+      const fromRoom = this.roomById.get(edge.fromRoomId);
+      const toRoom = this.roomById.get(edge.toRoomId);
+      if (!fromRoom || !toRoom) {
+        continue;
+      }
+
+      const firstTarget = edge.path[1] ?? toRoom.position;
+      const lastTarget = edge.path[edge.path.length - 2] ?? fromRoom.position;
+      this.drawDoorAt(this.getDoorAnchor(fromRoom, firstTarget));
+      this.drawDoorAt(this.getDoorAnchor(toRoom, lastTarget));
+    }
+  }
+
+  private getDoorAnchor(room: DungeonRoomNode, target: { x: number; y: number }): DoorAnchor {
+    const dx = target.x - room.position.x;
+    const dy = target.y - room.position.y;
+    const roomMinX = room.position.x - room.size.width / 2;
+    const roomMaxX = room.position.x + room.size.width / 2;
+    const roomMinY = room.position.y - room.size.height / 2;
+    const roomMaxY = room.position.y + room.size.height / 2;
+
+    if (Math.abs(dx) >= Math.abs(dy)) {
+      return {
+        x: dx >= 0 ? roomMaxX - 2 : roomMinX + 2,
+        y: Phaser.Math.Clamp(target.y, roomMinY + 10, roomMaxY - 10),
+        rotation: Math.PI / 2,
+      };
+    }
+
+    return {
+      x: Phaser.Math.Clamp(target.x, roomMinX + 10, roomMaxX - 10),
+      y: dy >= 0 ? roomMaxY - 2 : roomMinY + 2,
+      rotation: 0,
+    };
+  }
+
+  private drawDoorAt(anchor: DoorAnchor): void {
+    this.add
+      .image(anchor.x, anchor.y, 'sprite-door')
+      .setDisplaySize(12, 16)
+      .setRotation(anchor.rotation)
+      .setDepth(8)
+      .setAlpha(0.95);
   }
 
   private decorateZone(zone: DungeonZone, color: number): void {
@@ -573,8 +835,11 @@ export class DungeonScene extends Phaser.Scene {
     this.currentAmbientSound?.stop();
     this.currentAmbientSound?.destroy();
     this.currentAmbientSound = null;
+    this.interactionPrompt?.destroy();
+    this.interactionPrompt = null;
     if (typeof window !== 'undefined') {
       window.removeEventListener('repo-dungeon:audio-settings-changed', this.applyAudioSettings);
+      window.removeEventListener('keydown', this.handleGlobalInteractionKeyDown);
     }
   };
 }

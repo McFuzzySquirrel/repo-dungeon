@@ -17,6 +17,12 @@ const ROOM_OBJECT_ICONS: Record<RoomObjectType, string> = {
   'contributors-gallery': '👥',
 };
 
+const ROOM_OBJECT_COLORS: Record<RoomObjectType, number> = {
+  'readme-scroll': 0x8ad6ff,
+  'file-tree-archive': 0xffc86a,
+  'contributors-gallery': 0xb0f09b,
+};
+
 export class RoomObject extends Phaser.GameObjects.Container {
   private readonly interactionRadius: number;
   private readonly payload: RoomObjectInteractionPayload;
@@ -32,17 +38,27 @@ export class RoomObject extends Phaser.GameObjects.Container {
     scene.add.existing(this);
 
     const presentation = getBiomePresentation(biomeId);
-    const base = scene.add.rectangle(0, 0, 28, 20, presentation.palette.prop, 0.92);
+    const accentColor = ROOM_OBJECT_COLORS[blueprint.objectType];
+    const glow = scene.add.circle(0, 0, 16, accentColor, 0.22);
+    const base = scene.add.circle(0, 0, 12, presentation.palette.prop, 0.96);
     base.setStrokeStyle(2, presentation.palette.accent, 0.95);
+    const highlight = scene.add.circle(-3, -3, 4, accentColor, 0.7);
 
-    const icon = scene.add.text(0, -2, ROOM_OBJECT_ICONS[blueprint.objectType], {
+    const icon = scene.add.text(0, -1, ROOM_OBJECT_ICONS[blueprint.objectType], {
       fontFamily: 'monospace',
-      fontSize: '12px',
+      fontSize: '14px',
     });
     icon.setOrigin(0.5);
 
-    this.add([base, icon]);
-    this.interactionRadius = 28;
+    const caption = scene.add.text(0, 16, 'Loot', {
+      fontFamily: 'monospace',
+      fontSize: '9px',
+      color: '#d6e9ff',
+    });
+    caption.setOrigin(0.5);
+
+    this.add([glow, base, highlight, icon, caption]);
+    this.interactionRadius = 44;
     this.payload = {
       roomId: room.id,
       roomName: room.name,
@@ -53,9 +69,18 @@ export class RoomObject extends Phaser.GameObjects.Container {
 
     if (!reducedMotion) {
       scene.tweens.add({
-        targets: this,
-        y: this.y - 4,
-        duration: 1800,
+        targets: [this, glow],
+        y: this.y - 5,
+        duration: 1450,
+        yoyo: true,
+        repeat: -1,
+        ease: 'Sine.easeInOut',
+      });
+
+      scene.tweens.add({
+        targets: glow,
+        alpha: { from: 0.12, to: 0.3 },
+        duration: 950,
         yoyo: true,
         repeat: -1,
         ease: 'Sine.easeInOut',

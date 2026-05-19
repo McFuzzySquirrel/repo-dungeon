@@ -130,6 +130,11 @@ export function GameContextProvider({ game, children }: GameContextProviderProps
     // Listen for playerMoved events
     const handlePlayerMoved = (state: PlayerState) => {
       setPlayerState(state);
+      const latestDungeon = dungeonScene.getDungeon();
+      if (latestDungeon) {
+        const room = latestDungeon.rooms.find((candidate) => candidate.id === state.currentRoomId) ?? null;
+        setCurrentRoom(room);
+      }
     };
 
     // Listen for roomEntered events

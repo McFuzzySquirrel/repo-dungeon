@@ -45,6 +45,19 @@ function hashToPositiveInt(value: string): number {
 export function buildRoomObjectBlueprints(room: DungeonRoomNode): RoomObjectBlueprint[] {
   const centerX = room.position.x;
   const centerY = room.position.y;
+
+  if (room.type !== 'repo') {
+    return [
+      {
+        objectType: 'readme-scroll',
+        label: 'Starter Cache',
+        description: 'Starter collectible. Explore repo rooms for more loot markers.',
+        x: centerX,
+        y: centerY,
+      },
+    ];
+  }
+
   const spreadX = Math.max(24, Math.floor(room.size.width * 0.2));
   const spreadY = Math.max(24, Math.floor(room.size.height * 0.2));
 

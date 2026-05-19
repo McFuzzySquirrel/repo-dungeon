@@ -281,9 +281,24 @@ function withPath(edge: DungeonEdge, roomById: Map<string, DungeonRoomNode>): Du
     return edge;
   }
 
+  const from = fromRoom.position;
+  const to = toRoom.position;
+  const mid = {
+    x: to.x,
+    y: from.y,
+  };
+
+  const path = [from];
+  if (mid.x !== from.x || mid.y !== from.y) {
+    path.push(mid);
+  }
+  if (to.x !== mid.x || to.y !== mid.y) {
+    path.push(to);
+  }
+
   return {
     ...edge,
-    path: [fromRoom.position, toRoom.position],
+    path,
   };
 }
 

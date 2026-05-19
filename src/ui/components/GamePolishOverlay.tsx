@@ -18,7 +18,7 @@ export function GamePolishOverlay() {
 
       const tutorialByStep: Record<number, string> = {
         0: 'Tutorial: Move around with WASD/Arrow keys.',
-        1: 'Tutorial: Press E near room props or contributor NPCs.',
+        1: 'Tutorial: Look for glowing Loot markers and press E near them (or contributors).',
         2: 'Tutorial complete — press M for map and keep exploring!',
       };
 

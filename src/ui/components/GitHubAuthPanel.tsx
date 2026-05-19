@@ -22,6 +22,26 @@ export function GitHubAuthPanel() {
   const [shareMessage, setShareMessage] = useState<string | null>(null);
   const { game, dungeon, currentRoom } = useGameScene();
 
+  function focusGameCanvas(): void {
+    if (typeof document !== 'undefined') {
+      const activeElement = document.activeElement;
+      if (activeElement instanceof HTMLElement) {
+        activeElement.blur();
+      }
+    }
+
+    const canvas = game?.canvas;
+    if (!canvas) {
+      return;
+    }
+
+    if (!canvas.hasAttribute('tabindex')) {
+      canvas.setAttribute('tabindex', '0');
+    }
+
+    canvas.focus();
+  }
+
   function restartDungeonWithRepos(repos: GitHubRepoSummary[], username: string): void {
     if (!game) {
       return;
@@ -44,6 +64,7 @@ export function GitHubAuthPanel() {
     try {
       const repos = await data.fetchReposForUsername(usernameInput);
       restartDungeonWithRepos(repos, usernameInput.trim());
+      focusGameCanvas();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load repositories.';
       setLastFetchError(message);
@@ -55,6 +76,7 @@ export function GitHubAuthPanel() {
     try {
       const repos = await data.fetchReposForAuthenticatedUser();
       restartDungeonWithRepos(repos, auth.user?.login ?? usernameInput.trim());
+      focusGameCanvas();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to load repositories.';
       setLastFetchError(message);
@@ -116,7 +138,13 @@ export function GitHubAuthPanel() {
             </button>
           </>
         ) : (
-          <button type="button" onClick={() => void auth.beginLogin()}>
+          <button
+            type="button"
+            onClick={() => {
+              focusGameCanvas();
+              void auth.beginLogin();
+            }}
+          >
             Login with GitHub
           </button>
         )}

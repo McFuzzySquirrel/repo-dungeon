@@ -10,6 +10,7 @@ export interface BiomePalette {
 export interface BiomePresentation {
   biomeId: string;
   tilesetTextureKey: string;
+  tilesetAssetPath?: string;
   placeholderPattern: 'grid' | 'stone' | 'forge' | 'wind' | 'dungeon' | 'pipes' | 'vines' | 'parchment';
   palette: BiomePalette;
   ambientAudio: {
@@ -22,6 +23,7 @@ export interface BiomePresentation {
 const DEFAULT_PRESENTATION: BiomePresentation = {
   biomeId: 'lost-archive',
   tilesetTextureKey: 'tileset-lost-archive',
+  tilesetAssetPath: '/assets/tilesets/lost-archive.svg',
   placeholderPattern: 'parchment',
   palette: {
     floor: 0x6b5d4f,
@@ -40,6 +42,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'neon-circuit-city': {
     biomeId: 'neon-circuit-city',
     tilesetTextureKey: 'tileset-neon-circuit-city',
+    tilesetAssetPath: '/assets/tilesets/neon-circuit-city.svg',
     placeholderPattern: 'grid',
     palette: {
       floor: 0x243a7a,
@@ -56,6 +59,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'ancient-library': {
     biomeId: 'ancient-library',
     tilesetTextureKey: 'tileset-ancient-library',
+    tilesetAssetPath: '/assets/tilesets/ancient-library.svg',
     placeholderPattern: 'stone',
     palette: {
       floor: 0x70553f,
@@ -72,6 +76,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'iron-forge': {
     biomeId: 'iron-forge',
     tilesetTextureKey: 'tileset-iron-forge',
+    tilesetAssetPath: '/assets/tilesets/iron-forge.svg',
     placeholderPattern: 'forge',
     palette: {
       floor: 0x594238,
@@ -88,6 +93,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'wind-temple': {
     biomeId: 'wind-temple',
     tilesetTextureKey: 'tileset-wind-temple',
+    tilesetAssetPath: '/assets/tilesets/wind-temple.svg',
     placeholderPattern: 'wind',
     palette: {
       floor: 0x6ba8a1,
@@ -104,6 +110,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'deep-dungeon': {
     biomeId: 'deep-dungeon',
     tilesetTextureKey: 'tileset-deep-dungeon',
+    tilesetAssetPath: '/assets/tilesets/deep-dungeon.svg',
     placeholderPattern: 'dungeon',
     palette: {
       floor: 0x474747,
@@ -120,6 +127,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'utility-vault': {
     biomeId: 'utility-vault',
     tilesetTextureKey: 'tileset-utility-vault',
+    tilesetAssetPath: '/assets/tilesets/utility-vault.svg',
     placeholderPattern: 'pipes',
     palette: {
       floor: 0x4e5a61,
@@ -136,6 +144,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'garden-ruins': {
     biomeId: 'garden-ruins',
     tilesetTextureKey: 'tileset-garden-ruins',
+    tilesetAssetPath: '/assets/tilesets/garden-ruins.svg',
     placeholderPattern: 'vines',
     palette: {
       floor: 0x7f9f76,

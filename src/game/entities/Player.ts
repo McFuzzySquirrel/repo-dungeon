@@ -1,6 +1,17 @@
 import Phaser from 'phaser';
 import type { DungeonPoint, DungeonRoomNode } from '@/game/systems/dungeonTypes';
 
+interface KeyLike {
+  isDown: boolean;
+}
+
+interface NavigationRegion {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
 export interface PlayerState {
   position: DungeonPoint;
   currentRoomId: string;
@@ -15,11 +26,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private currentRoom: DungeonRoomNode | null = null;
   private facingDirection: 'up' | 'down' | 'left' | 'right' = 'down';
 
-  private readonly MOVE_SPEED = 200; // pixels per second
+  private readonly MOVE_SPEED = 340; // pixels per second
   private readonly PLAYER_RADIUS = 8; // collision radius
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    super(scene, x, y, 'player');
+    const textureKey = scene.textures.exists('sprite-player') ? 'sprite-player' : 'player-placeholder';
+    super(scene, x, y, textureKey);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -32,13 +44,15 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Create a simple circle representation if no sprite available
     this.setDisplaySize(16, 16);
-    this.setTint(0x4a90e2);
+    if (textureKey === 'player-placeholder') {
+      this.setTint(0x4a90e2);
+    }
   }
 
   /**
    * Set the current room the player is in.
    */
-  setCurrentRoom(room: DungeonRoomNode): void {
+  setCurrentRoom(room: DungeonRoomNode | null): void {
     this.currentRoom = room;
   }
 
@@ -60,12 +74,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    * Update facing direction and velocity based on input.
    */
   updateMovement(cursors: {
-    up: Phaser.Input.Keyboard.Key;
-    down: Phaser.Input.Keyboard.Key;
-    left: Phaser.Input.Keyboard.Key;
-    right: Phaser.Input.Keyboard.Key;
-  }): void {
+    up: KeyLike;
+    down: KeyLike;
+    left: KeyLike;
+    right: KeyLike;
+  }, speedMultiplier = 1): void {
     const body = this.body as Phaser.Physics.Arcade.Body;
+    const movementSpeed = this.MOVE_SPEED * Phaser.Math.Clamp(speedMultiplier, 0.8, 2.2);
 
     // Reset velocity
     body.setVelocity(0, 0);
@@ -75,19 +90,19 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Check input
     if (cursors.up.isDown) {
-      vy = -this.MOVE_SPEED;
+      vy = -movementSpeed;
       this.facingDirection = 'up';
     }
     if (cursors.down.isDown) {
-      vy = this.MOVE_SPEED;
+      vy = movementSpeed;
       this.facingDirection = 'down';
     }
     if (cursors.left.isDown) {
-      vx = -this.MOVE_SPEED;
+      vx = -movementSpeed;
       this.facingDirection = 'left';
     }
     if (cursors.right.isDown) {
-      vx = this.MOVE_SPEED;
+      vx = movementSpeed;
       this.facingDirection = 'right';
     }
 
@@ -111,6 +126,56 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     if (constrainedX !== this.x || constrainedY !== this.y) {
       this.setPosition(constrainedX, constrainedY);
+      body.setVelocity(0, 0);
+    }
+  }
+
+  /**
+   * Keep player inside any navigable region (rooms and corridor bands).
+   */
+  constrainToNavigationRegions(regions: NavigationRegion[]): void {
+    if (regions.length === 0) {
+      return;
+    }
+
+    const body = this.body as Phaser.Physics.Arcade.Body;
+
+    for (const region of regions) {
+      const minX = region.minX + this.PLAYER_RADIUS;
+      const minY = region.minY + this.PLAYER_RADIUS;
+      const maxX = region.maxX - this.PLAYER_RADIUS;
+      const maxY = region.maxY - this.PLAYER_RADIUS;
+
+      if (this.x >= minX && this.x <= maxX && this.y >= minY && this.y <= maxY) {
+        return;
+      }
+    }
+
+    let closestX = this.x;
+    let closestY = this.y;
+    let closestDistanceSq = Number.POSITIVE_INFINITY;
+
+    for (const region of regions) {
+      const minX = region.minX + this.PLAYER_RADIUS;
+      const minY = region.minY + this.PLAYER_RADIUS;
+      const maxX = region.maxX - this.PLAYER_RADIUS;
+      const maxY = region.maxY - this.PLAYER_RADIUS;
+
+      const candidateX = Phaser.Math.Clamp(this.x, minX, maxX);
+      const candidateY = Phaser.Math.Clamp(this.y, minY, maxY);
+      const dx = this.x - candidateX;
+      const dy = this.y - candidateY;
+      const distanceSq = dx * dx + dy * dy;
+
+      if (distanceSq < closestDistanceSq) {
+        closestDistanceSq = distanceSq;
+        closestX = candidateX;
+        closestY = candidateY;
+      }
+    }
+
+    if (closestX !== this.x || closestY !== this.y) {
+      this.setPosition(closestX, closestY);
       body.setVelocity(0, 0);
     }
   }

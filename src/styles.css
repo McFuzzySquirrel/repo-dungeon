@@ -41,6 +41,14 @@ textarea:focus-visible {
   border: 2px solid #2b3242;
 }
 
+.game-root canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
 .overlay {
   position: absolute;
   top: 0.75rem;
