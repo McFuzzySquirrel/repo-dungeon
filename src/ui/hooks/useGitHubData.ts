@@ -5,6 +5,7 @@ import {
   isRepoListFresh,
   loadCachedRepoList,
   saveCachedRepoList,
+  touchCachedRepoListFreshness,
 } from '@/github/cache';
 import type { GitHubRepoSummary } from '@/github/types';
 
@@ -57,8 +58,13 @@ export function useGitHubData(): UseGitHubDataResult {
       setProgress({ page: 0, loadedCount: 0 });
       setCacheAge(null);
 
+      // Item #1 (optimization-research): use persisted page ETags so that an
+      // expired-but-unchanged repo list refreshes via free 304 responses.
+      const persisted = options.forceRefresh ? undefined : loadCachedRepoList(trimmed) ?? undefined;
+
       try {
-        const results = await client.listPublicRepos(trimmed, {
+        const result = await client.listPublicReposWithRevalidation(trimmed, {
+          persisted,
           onProgress: (snapshot) => {
             setProgress({
               page: snapshot.page,
@@ -66,11 +72,18 @@ export function useGitHubData(): UseGitHubDataResult {
             });
           },
         });
-        saveCachedRepoList(trimmed, results);
-        setRepos(results);
+
+        if (result.fullyRevalidated && persisted) {
+          // Every page returned 304 — keep the cached body, just refresh fetchedAt.
+          touchCachedRepoListFreshness(trimmed);
+        } else {
+          saveCachedRepoList(trimmed, result.repos, result.pageEtags);
+        }
+
+        setRepos(result.repos);
         setCacheAge(new Date().toISOString());
         setStatus('success');
-        return results;
+        return result.repos;
       } catch (error) {
         const message =
           error instanceof GitHubApiError

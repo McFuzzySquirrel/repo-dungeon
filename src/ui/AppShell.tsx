@@ -15,6 +15,7 @@ import { WelcomeScreen } from '@/ui/components/WelcomeScreen';
 import { HelpOverlay } from '@/ui/components/HelpOverlay';
 import { ProgressionController } from '@/ui/components/ProgressionController';
 import { XpHud } from '@/ui/components/XpHud';
+import { RateLimitHud } from '@/ui/components/RateLimitHud';
 import { decodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
 import { useSessionStore } from '@/store/sessionStore';
 import { useDungeonStore } from '@/store/dungeonStore';
@@ -106,6 +107,7 @@ export function AppShell() {
             <GamePolishOverlay />
             <XpHud />
             <TouchControls />
+            <RateLimitHud />
             <GameHudControls onOpenHelp={openHelp} onOpenHome={() => setShowWelcome(true)} />
           </>
         )}

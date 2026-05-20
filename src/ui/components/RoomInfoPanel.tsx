@@ -5,10 +5,12 @@ import {
   isRoomDetailFresh,
   loadCachedRoomDetail,
   saveCachedRoomDetail,
+  touchCachedRoomDetailFreshness,
+  type RoomDetailEtags,
 } from '@/github/cache';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import type { RoomEnteredEvent } from '@/ui/context/GameContext';
-import type { GitHubRoomData } from '@/github/types';
+import type { GitHubReadmePayload, GitHubRepoSummary, GitHubRoomData } from '@/github/types';
 import '@/ui/styles/room-info.css';
 
 type TabType = 'overview' | 'readme' | 'files' | 'contributors';
@@ -20,7 +22,13 @@ interface PanelState {
   isLoading: boolean;
   error: string | null;
   data: GitHubRoomData | null;
+  /** Per-endpoint ETags from the most recently loaded snapshot, used for lazy revalidation. */
+  etags: RoomDetailEtags;
+  /** Set of deferred endpoints currently being lazy-fetched. */
+  loadingDeferred: Partial<Record<'readme' | 'contributors', boolean>>;
   activeTab: TabType;
+  currentOwner: string | null;
+  currentRepoName: string | null;
 }
 
 /**
@@ -36,7 +44,11 @@ export function RoomInfoPanel() {
     isLoading: false,
     error: null,
     data: null,
+    etags: {},
+    loadingDeferred: {},
     activeTab: 'overview',
+    currentOwner: null,
+    currentRepoName: null,
   });
 
   const clientRef = useRef<GitHubApiClient | null>(null);
@@ -76,12 +88,16 @@ export function RoomInfoPanel() {
           isLoading: !cached,
           error: null,
           data: cached || null,
+          etags: {},
+          loadingDeferred: {},
           activeTab: 'overview',
+          currentOwner: (event.repo?.owner as string | undefined) ?? (event.repo?.ownerLogin as string | undefined) ?? null,
+          currentRepoName: (event.repo?.name as string | undefined) ?? null,
         }));
 
         // Fetch detailed data if not cached
         if (!cached && clientRef.current) {
-          void fetchRoomData(event.roomId, event.repo as Record<string, string>);
+          void fetchRoomData(event.roomId, event.repo);
         }
       },
       [state.isOpen, state.currentRoomId, getRoomDetails, visitedStamps],
@@ -110,12 +126,12 @@ export function RoomInfoPanel() {
   );
 
   // Fetch room data from GitHub API, using persistent cache first
-  const fetchRoomData = async (roomId: string, repo: Record<string, string>) => {
+  const fetchRoomData = async (roomId: string, repo: Record<string, unknown>) => {
     if (!clientRef.current) return;
 
     try {
-      const owner = repo.owner || '';
-      const repoName = repo.name || '';
+      const owner = (repo.owner as string | undefined) || (repo.ownerLogin as string | undefined) || '';
+      const repoName = (repo.name as string | undefined) || '';
 
       if (!owner || !repoName) {
         setState((prev) => ({
@@ -126,31 +142,71 @@ export function RoomInfoPanel() {
         return;
       }
 
-      // Check persistent cache first
+      // Fresh persistent cache hit → no network at all.
       const cachedSnapshot = loadCachedRoomDetail(owner, repoName);
       if (cachedSnapshot && isRoomDetailFresh(cachedSnapshot)) {
         const data = cachedSnapshot.data;
         cacheRoomDetails(roomId, data);
-        setState((prev) => ({ ...prev, data, isLoading: false, error: null }));
+        setState((prev) => ({
+          ...prev,
+          data,
+          etags: cachedSnapshot.etags ?? {},
+          isLoading: false,
+          error: null,
+        }));
         return;
       }
 
-      const data = await clientRef.current.loadRoomData({
-        roomId,
-        owner,
-        repo: repoName,
-      });
+      // Item #2: reuse the repo summary delivered in the dungeon event, so
+      // GET /repos/{owner}/{repo} can be skipped entirely.
+      // Item #3/#4: defer README and contributors to lazy on-tab-open loads.
+      // Item #1: pass the (possibly stale) persisted snapshot so each
+      // sub-request can issue If-None-Match and short-circuit on 304.
+      const summary = buildSummaryFromEvent(repo);
+      const result = await clientRef.current.loadRoomData(
+        { roomId, owner, repo: repoName },
+        {
+          summary,
+          persisted: cachedSnapshot ?? undefined,
+          skipReadme: true,
+          skipContributors: true,
+        },
+      );
 
-      saveCachedRoomDetail(owner, repoName, data);
-      cacheRoomDetails(roomId, data);
+      if (result.fullyRevalidated && cachedSnapshot) {
+        touchCachedRoomDetailFreshness(owner, repoName);
+      } else {
+        saveCachedRoomDetail(owner, repoName, result.data, result.etags);
+      }
+      cacheRoomDetails(roomId, result.data);
       setState((prev) => ({
         ...prev,
-        data,
+        data: result.data,
+        etags: result.etags,
         isLoading: false,
         error: null,
       }));
     } catch (error) {
       const errorMsg = error instanceof GitHubApiError ? error.message : 'Failed to load repository details';
+
+      // Item #5: rate-limit-aware graceful degradation. If a stale persisted
+      // snapshot exists, surface it rather than failing outright.
+      if (error instanceof GitHubApiError && error.details.kind === 'rate_limit') {
+        const owner = (repo.owner as string | undefined) || (repo.ownerLogin as string | undefined) || '';
+        const repoName = (repo.name as string | undefined) || '';
+        const stale = owner && repoName ? loadCachedRoomDetail(owner, repoName) : null;
+        if (stale) {
+          cacheRoomDetails(roomId, stale.data);
+          setState((prev) => ({
+            ...prev,
+            data: stale.data,
+            etags: stale.etags ?? {},
+            isLoading: false,
+            error: null,
+          }));
+          return;
+        }
+      }
 
       setState((prev) => ({
         ...prev,
@@ -159,6 +215,70 @@ export function RoomInfoPanel() {
       }));
     }
   };
+
+  // Lazy-load README (item #4) the first time the README tab/scroll is opened.
+  const ensureReadmeLoaded = useCallback(() => {
+    setState((prev) => {
+      const owner = prev.currentOwner;
+      const repoName = prev.currentRepoName;
+      if (!owner || !repoName || !prev.data || !clientRef.current) return prev;
+      if (!prev.data.deferred?.includes('readme')) return prev;
+      if (prev.loadingDeferred.readme) return prev;
+
+      const client = clientRef.current;
+      void (async () => {
+        try {
+          const { readme, etag } = await client.loadReadme(
+            { roomId: prev.currentRoomId ?? '', owner, repo: repoName },
+            { etag: prev.etags.readme },
+          );
+          setState((p) => mergeLazyResult(p, owner, repoName, { readme }, { readme: etag }));
+        } catch {
+          setState((p) => mergeLazyResult(p, owner, repoName, {}, {}, 'readme'));
+        }
+      })();
+
+      return {
+        ...prev,
+        loadingDeferred: { ...prev.loadingDeferred, readme: true },
+      };
+    });
+  }, []);
+
+  // Lazy-load contributors (item #3) the first time the Contributors tab/gallery is opened.
+  const ensureContributorsLoaded = useCallback(() => {
+    setState((prev) => {
+      const owner = prev.currentOwner;
+      const repoName = prev.currentRepoName;
+      if (!owner || !repoName || !prev.data || !clientRef.current) return prev;
+      if (!prev.data.deferred?.includes('contributors')) return prev;
+      if (prev.loadingDeferred.contributors) return prev;
+
+      const client = clientRef.current;
+      void (async () => {
+        try {
+          const { contributors, etag } = await client.loadContributors(
+            { roomId: prev.currentRoomId ?? '', owner, repo: repoName },
+            { etag: prev.etags.contributors },
+          );
+          setState((p) => mergeLazyResult(p, owner, repoName, { contributors }, { contributors: etag }));
+        } catch {
+          setState((p) => mergeLazyResult(p, owner, repoName, {}, {}, 'contributors'));
+        }
+      })();
+
+      return {
+        ...prev,
+        loadingDeferred: { ...prev.loadingDeferred, contributors: true },
+      };
+    });
+  }, []);
+
+  // Trigger lazy loads when the active tab demands them.
+  useEffect(() => {
+    if (state.activeTab === 'readme') ensureReadmeLoaded();
+    if (state.activeTab === 'contributors') ensureContributorsLoaded();
+  }, [state.activeTab, state.data, ensureReadmeLoaded, ensureContributorsLoaded]);
 
   // Handle panel close
   const handleClose = useCallback(() => {
@@ -348,7 +468,12 @@ export function RoomInfoPanel() {
                   role="tabpanel"
                   aria-labelledby="room-info-tab-readme"
                 >
-                  {data.readme.plainText ? (
+                  {state.loadingDeferred.readme || data.deferred?.includes('readme') ? (
+                    <div className="room-info-loading">
+                      <div className="spinner" aria-hidden="true" />
+                      <p>Loading README…</p>
+                    </div>
+                  ) : data.readme.plainText ? (
                     <div className="room-info-readme">
                       <p>{data.readme.plainText.substring(0, 1000)}</p>
                       {data.readme.truncated && <p className="room-info-truncated">[Truncated]</p>}
@@ -393,7 +518,12 @@ export function RoomInfoPanel() {
                   role="tabpanel"
                   aria-labelledby="room-info-tab-contributors"
                 >
-                  {data.contributors.length > 0 ? (
+                  {state.loadingDeferred.contributors || data.deferred?.includes('contributors') ? (
+                    <div className="room-info-loading">
+                      <div className="spinner" aria-hidden="true" />
+                      <p>Loading contributors…</p>
+                    </div>
+                  ) : data.contributors.length > 0 ? (
                     <div className="room-info-contributors">
                       {data.contributors.slice(0, 5).map((contributor) => (
                         <div key={contributor.id} className="room-info-contributor">
@@ -502,4 +632,90 @@ function LanguageBar({ languages }: { languages: Record<string, number> }) {
       </div>
     </div>
   );
+}
+
+/**
+ * Reconstruct a `GitHubRepoSummary` from the room-entered event payload. The
+ * DungeonScene already spreads the full summary fields into the event (and
+ * adds an `owner` alias), so this is a zero-cost equivalent of fetching
+ * `GET /repos/{owner}/{repo}` again (optimization-research item #2).
+ */
+function buildSummaryFromEvent(repo: Record<string, unknown>): GitHubRepoSummary | undefined {
+  const id = repo.id;
+  const name = repo.name;
+  const ownerLogin = (repo.ownerLogin as string | undefined) ?? (repo.owner as string | undefined);
+  const fullName = repo.fullName;
+  const defaultBranch = repo.defaultBranch;
+  if (
+    typeof id !== 'number' ||
+    typeof name !== 'string' ||
+    typeof ownerLogin !== 'string' ||
+    typeof fullName !== 'string' ||
+    typeof defaultBranch !== 'string'
+  ) {
+    return undefined;
+  }
+  return {
+    id,
+    name,
+    ownerLogin,
+    fullName,
+    description: (repo.description as string | null | undefined) ?? null,
+    htmlUrl: (repo.htmlUrl as string | undefined) ?? '',
+    language: (repo.language as string | null | undefined) ?? null,
+    stargazersCount: typeof repo.stargazersCount === 'number' ? repo.stargazersCount : 0,
+    forksCount: typeof repo.forksCount === 'number' ? repo.forksCount : 0,
+    topics: Array.isArray(repo.topics) ? (repo.topics as string[]) : [],
+    isPrivate: Boolean(repo.isPrivate),
+    defaultBranch,
+  };
+}
+
+/**
+ * Apply a lazy-loaded slice (readme or contributors) to panel state and
+ * persist it to localStorage so subsequent visits get the full snapshot.
+ */
+function mergeLazyResult(
+  prev: PanelState,
+  owner: string,
+  repoName: string,
+  patch: { readme?: GitHubReadmePayload; contributors?: GitHubRoomData['contributors'] },
+  etagPatch: { readme?: string; contributors?: string },
+  failureKey?: 'readme' | 'contributors',
+): PanelState {
+  if (!prev.data) return prev;
+  if (prev.currentOwner !== owner || prev.currentRepoName !== repoName) {
+    return { ...prev, loadingDeferred: { ...prev.loadingDeferred, ...(failureKey ? { [failureKey]: false } : {}) } };
+  }
+
+  const deferred = (prev.data.deferred ?? []).filter((key) => !(key in patch));
+  const unavailable = failureKey ? [...prev.data.unavailable, failureKey] : prev.data.unavailable;
+
+  const nextData: GitHubRoomData = {
+    ...prev.data,
+    ...(patch.readme ? { readme: patch.readme } : {}),
+    ...(patch.contributors ? { contributors: patch.contributors } : {}),
+    deferred: deferred.length > 0 ? deferred : undefined,
+    unavailable,
+  };
+
+  const nextEtags: RoomDetailEtags = {
+    ...prev.etags,
+    ...(etagPatch.readme ? { readme: etagPatch.readme } : {}),
+    ...(etagPatch.contributors ? { contributors: etagPatch.contributors } : {}),
+  };
+
+  // Persist the merged snapshot so subsequent sessions see the upgraded data.
+  saveCachedRoomDetail(owner, repoName, nextData, nextEtags);
+
+  return {
+    ...prev,
+    data: nextData,
+    etags: nextEtags,
+    loadingDeferred: {
+      ...prev.loadingDeferred,
+      ...(patch.readme || failureKey === 'readme' ? { readme: false } : {}),
+      ...(patch.contributors || failureKey === 'contributors' ? { contributors: false } : {}),
+    },
+  };
 }

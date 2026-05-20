@@ -27,12 +27,12 @@ export class RoomLoader {
     }
 
     try {
-      const data = await this.apiClient.loadRoomData(room);
-      this.roomCache.set(key, data);
+      const result = await this.apiClient.loadRoomData(room);
+      this.roomCache.set(key, result.data);
       return {
         state: 'ready',
         room,
-        data,
+        data: result.data,
       };
     } catch (error) {
       if (error instanceof GitHubApiError) {

@@ -1,4 +1,5 @@
 import { Octokit } from '@octokit/rest';
+import type { RoomDetailEtags, RoomDetailSnapshot, RepoListSnapshot } from '@/github/cache';
 import type {
   GitHubApiErrorShape,
   GitHubContributorSummary,
@@ -32,6 +33,56 @@ export class GitHubApiError extends Error {
   }
 }
 
+/**
+ * Most recent rate-limit reading published by the API client. Components can
+ * subscribe via `GitHubApiClient.subscribeRateLimit` to surface the remaining
+ * budget in the UI (HUD counter) and degrade gracefully near the cap.
+ */
+export interface RateLimitSnapshot {
+  limit: number | null;
+  remaining: number | null;
+  resetAt: string | null;
+  /** Whether the most recent request was a free conditional-request short-circuit (304). */
+  lastWasConditional: boolean;
+  /** Wall-clock time of this reading. */
+  observedAt: string;
+}
+
+/**
+ * Process-wide singleton tracker for GitHub rate-limit headers. Every
+ * `GitHubApiClient` instance publishes here in addition to its own per-client
+ * subscribers, so the HUD can display the latest reading without needing a
+ * client reference. Implementation of optimization-research item #5.
+ */
+class RateLimitTracker {
+  private snapshot: RateLimitSnapshot | null = null;
+  private readonly listeners = new Set<(snapshot: RateLimitSnapshot) => void>();
+
+  get(): RateLimitSnapshot | null {
+    return this.snapshot;
+  }
+
+  publish(snapshot: RateLimitSnapshot): void {
+    this.snapshot = snapshot;
+    for (const listener of this.listeners) {
+      try {
+        listener(snapshot);
+      } catch {
+        // listener errors must not break request flow
+      }
+    }
+  }
+
+  subscribe(listener: (snapshot: RateLimitSnapshot) => void): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+}
+
+export const rateLimitTracker = new RateLimitTracker();
+
 interface GitHubApiClientOptions {
   cacheTtlMs?: number;
   requester?: GitHubRequester;
@@ -40,6 +91,48 @@ interface GitHubApiClientOptions {
 interface ListRepoOptions {
   onProgress?: (progress: RepoPageProgress) => void;
   perPage?: number;
+  /** Existing persisted snapshot whose page ETags should be used for `If-None-Match`. */
+  persisted?: RepoListSnapshot;
+}
+
+export interface LoadRepoListResult {
+  repos: GitHubRepoSummary[];
+  /** Map of page index (1-based) → ETag header value, suitable for persisting. */
+  pageEtags: Record<number, string>;
+  /** True when every fetched page returned `304 Not Modified` and `persisted` was reused. */
+  fullyRevalidated: boolean;
+}
+
+interface LoadRoomDataOptions {
+  /** Pre-fetched repo summary (e.g. from the dungeon repo-list cache). Skips `GET /repos/{owner}/{repo}`. */
+  summary?: GitHubRepoSummary;
+  /** Existing persisted snapshot; its ETags are used for `If-None-Match` revalidation. */
+  persisted?: RoomDetailSnapshot;
+  /** Skip the README request (caller will lazy-fetch via `loadReadme`). Default: false. */
+  skipReadme?: boolean;
+  /** Skip the contributors request (caller will lazy-fetch via `loadContributors`). Default: false. */
+  skipContributors?: boolean;
+}
+
+export interface LoadRoomDataResult {
+  data: GitHubRoomData;
+  etags: RoomDetailEtags;
+  /**
+   * True when every fetched endpoint returned `304 Not Modified` (and `persisted`
+   * supplied the body). Callers can `touchCachedRoomDetailFreshness` instead of
+   * re-saving the same payload.
+   */
+  fullyRevalidated: boolean;
+}
+
+export interface LoadReadmeResult {
+  readme: GitHubReadmePayload;
+  etag?: string;
+}
+
+export interface LoadContributorsResult {
+  contributors: GitHubContributorSummary[];
+  etag?: string;
 }
 
 interface RepoApiModel {
@@ -87,18 +180,38 @@ export function createOctokitRequester(): GitHubRequester {
   });
 
   return async <T>(route: string, parameters?: Record<string, unknown>): Promise<RequestResult<T>> => {
-    const response = await octokit.request(route, {
-      ...parameters,
-      headers: {
-        Accept: 'application/vnd.github+json',
-      },
-    });
+    const callerHeaders = (parameters?.headers as Record<string, string | undefined> | undefined) ?? {};
+    const passthroughParameters = { ...parameters };
+    delete passthroughParameters.headers;
 
-    return {
-      data: response.data as T,
-      status: response.status,
-      headers: response.headers,
-    };
+    try {
+      const response = await octokit.request(route, {
+        ...passthroughParameters,
+        headers: {
+          Accept: 'application/vnd.github+json',
+          ...callerHeaders,
+        },
+      });
+
+      return {
+        data: response.data as T,
+        status: response.status,
+        headers: response.headers,
+      };
+    } catch (error) {
+      // Octokit raises HttpError for 304 responses (since they have no body).
+      // Surface it as a normal RequestResult so revalidation logic can detect it.
+      const status = (error as { status?: number } | null)?.status;
+      if (status === 304) {
+        const headers = ((error as { response?: { headers?: HeaderBag } } | null)?.response?.headers ?? {});
+        return {
+          data: undefined as unknown as T,
+          status: 304,
+          headers,
+        };
+      }
+      throw error;
+    }
   };
 }
 
@@ -107,6 +220,8 @@ export class GitHubApiClient {
   private readonly cacheTtlMs: number;
   private readonly cache = new Map<string, CacheRecord<unknown>>();
   private readonly inFlight = new Map<string, Promise<unknown>>();
+  private rateLimit: RateLimitSnapshot | null = null;
+  private readonly rateLimitListeners = new Set<(snapshot: RateLimitSnapshot) => void>();
 
   constructor(options: GitHubApiClientOptions = {}) {
     this.requester = options.requester ?? createOctokitRequester();
@@ -118,44 +233,220 @@ export class GitHubApiClient {
     this.inFlight.clear();
   }
 
+  /** Most recent rate-limit reading (or null if no requests have been observed). */
+  getRateLimit(): RateLimitSnapshot | null {
+    return this.rateLimit;
+  }
+
+  /** Subscribe to rate-limit updates (HUD counter). Returns an unsubscribe function. */
+  subscribeRateLimit(listener: (snapshot: RateLimitSnapshot) => void): () => void {
+    this.rateLimitListeners.add(listener);
+    return () => {
+      this.rateLimitListeners.delete(listener);
+    };
+  }
+
+  /**
+   * Backward-compatible repo-list loader. Prefer `listPublicReposWithRevalidation`
+   * when an existing persisted snapshot is available, so 304 short-circuits apply.
+   */
   async listPublicRepos(username: string, options: ListRepoOptions = {}): Promise<GitHubRepoSummary[]> {
+    const result = await this.listPublicReposWithRevalidation(username, options);
+    return result.repos;
+  }
+
+  async listPublicReposWithRevalidation(
+    username: string,
+    options: ListRepoOptions = {},
+  ): Promise<LoadRepoListResult> {
     return this.listReposPageLoop('GET /users/{username}/repos', { username }, options);
   }
 
-  async loadRoomData(roomRef: RoomRepositoryRef): Promise<GitHubRoomData> {
-    const repoResponse = await this.requestWithCache<RepoApiModel>(
-      'GET /repos/{owner}/{repo}',
+  /**
+   * Loads the room data for a single repository.
+   *
+   * Optimizations applied (see `docs/optimization-research.md`):
+   * - `options.summary`: skips `GET /repos/{owner}/{repo}` when the caller already
+   *   has the summary from the repo-list (item #2).
+   * - `options.persisted`: uses persisted per-endpoint ETags to issue
+   *   `If-None-Match` requests; 304 responses reuse the persisted body and do
+   *   not count against the rate-limit budget (item #1).
+   * - `options.skipReadme` / `options.skipContributors`: defer those fetches to
+   *   lazy on-demand loaders (`loadReadme`, `loadContributors`) so unopened tabs
+   *   never cost a request (items #3, #4).
+   */
+  async loadRoomData(
+    roomRef: RoomRepositoryRef,
+    options: LoadRoomDataOptions = {},
+  ): Promise<LoadRoomDataResult> {
+    const persistedData = options.persisted?.data;
+    const persistedEtags = options.persisted?.etags ?? {};
+    const skipReadme = options.skipReadme === true;
+    const skipContributors = options.skipContributors === true;
+    let revalidatedCount = 0;
+    let fetchedOrSkippedCount = 0;
+
+    // ── repo summary ─────────────────────────────────────────────────────────
+    let repo: GitHubRepoSummary;
+    let repoEtag: string | undefined;
+
+    if (options.summary && options.summary.ownerLogin === roomRef.owner && options.summary.name === roomRef.repo) {
+      // Item #2: caller already has the summary; skip the request entirely.
+      repo = options.summary;
+      repoEtag = persistedEtags.repo;
+    } else {
+      const repoOutcome = await this.revalidate<RepoApiModel>(
+        'GET /repos/{owner}/{repo}',
+        { owner: roomRef.owner, repo: roomRef.repo },
+        persistedEtags.repo,
+        true,
+      );
+      fetchedOrSkippedCount += 1;
+      if (repoOutcome.notModified && persistedData) {
+        repo = persistedData.repo;
+        repoEtag = persistedEtags.repo;
+        revalidatedCount += 1;
+      } else if (repoOutcome.data) {
+        repo = normalizeRepo(repoOutcome.data);
+        repoEtag = repoOutcome.etag ?? persistedEtags.repo;
+      } else {
+        throw new GitHubApiError({
+          kind: 'unknown',
+          message: 'Repository response was empty.',
+          status: repoOutcome.status,
+        });
+      }
+    }
+
+    const unavailable: GitHubRoomData['unavailable'] = [];
+    const deferred: NonNullable<GitHubRoomData['deferred']> = [];
+    const etags: RoomDetailEtags = {};
+    if (repoEtag) etags.repo = repoEtag;
+
+    // ── languages ────────────────────────────────────────────────────────────
+    const languagesPromise = this.revalidate<Record<string, number>>(
+      'GET /repos/{owner}/{repo}/languages',
+      { owner: roomRef.owner, repo: roomRef.repo },
+      persistedEtags.languages,
+      false,
+    )
+      .then((outcome) => {
+        fetchedOrSkippedCount += 1;
+        if (outcome.notModified && persistedData) {
+          revalidatedCount += 1;
+          if (persistedEtags.languages) etags.languages = persistedEtags.languages;
+          return persistedData.languages;
+        }
+        if (outcome.etag) etags.languages = outcome.etag;
+        return outcome.data ?? {};
+      })
+      .catch(() => {
+        unavailable.push('languages');
+        const fallback: Record<string, number> = {};
+        return fallback;
+      });
+
+    // ── tree ─────────────────────────────────────────────────────────────────
+    const treePromise = this.revalidate<RepoTreeApiModel>(
+      'GET /repos/{owner}/{repo}/git/trees/{tree_sha}',
       {
         owner: roomRef.owner,
         repo: roomRef.repo,
+        tree_sha: repo.defaultBranch,
+        recursive: 1,
       },
-      true,
-    );
+      persistedEtags.tree,
+      false,
+    )
+      .then((outcome) => {
+        fetchedOrSkippedCount += 1;
+        if (outcome.notModified && persistedData) {
+          revalidatedCount += 1;
+          if (persistedEtags.tree) etags.tree = persistedEtags.tree;
+          return {
+            entries: persistedData.topLevelTree,
+            truncated: persistedData.treeTruncated,
+          };
+        }
+        if (outcome.etag) etags.tree = outcome.etag;
+        const treeBody = outcome.data ?? { tree: [], truncated: false };
+        const entries = (treeBody.tree ?? [])
+          .filter((entry) => !entry.path.includes('/'))
+          .map((entry) => ({ path: entry.path, type: entry.type }));
+        return { entries, truncated: Boolean(treeBody.truncated) };
+      })
+      .catch(() => {
+        unavailable.push('tree');
+        return { entries: [] as GitHubRepoTreeEntry[], truncated: false };
+      });
 
-    const repo = normalizeRepo(repoResponse.data);
+    // ── readme (lazy when skipped) ───────────────────────────────────────────
+    let readmePromise: Promise<GitHubReadmePayload>;
+    if (skipReadme) {
+      deferred.push('readme');
+      // Reuse persisted README body if we have one; otherwise placeholder.
+      readmePromise = Promise.resolve(
+        persistedData?.readme ?? {
+          plainText: null,
+          truncated: false,
+        },
+      );
+      if (persistedEtags.readme) etags.readme = persistedEtags.readme;
+    } else {
+      readmePromise = this.revalidateReadme(roomRef.owner, roomRef.repo, persistedEtags.readme)
+        .then((outcome) => {
+          fetchedOrSkippedCount += 1;
+          if (outcome.notModified && persistedData) {
+            revalidatedCount += 1;
+            if (persistedEtags.readme) etags.readme = persistedEtags.readme;
+            return persistedData.readme;
+          }
+          if (outcome.etag) etags.readme = outcome.etag;
+          return outcome.readme;
+        })
+        .catch((error: unknown) => {
+          unavailable.push('readme');
+          return fallbackReadme(error);
+        });
+    }
 
-    const unavailable: GitHubRoomData['unavailable'] = [];
+    // ── contributors (lazy when skipped) ─────────────────────────────────────
+    let contributorsPromise: Promise<GitHubContributorSummary[]>;
+    if (skipContributors) {
+      deferred.push('contributors');
+      contributorsPromise = Promise.resolve(persistedData?.contributors ?? []);
+      if (persistedEtags.contributors) etags.contributors = persistedEtags.contributors;
+    } else {
+      contributorsPromise = this.revalidate<ContributorApiModel[]>(
+        'GET /repos/{owner}/{repo}/contributors',
+        { owner: roomRef.owner, repo: roomRef.repo, per_page: 5, anon: false },
+        persistedEtags.contributors,
+        false,
+      )
+        .then((outcome) => {
+          fetchedOrSkippedCount += 1;
+          if (outcome.notModified && persistedData) {
+            revalidatedCount += 1;
+            if (persistedEtags.contributors) etags.contributors = persistedEtags.contributors;
+            return persistedData.contributors;
+          }
+          if (outcome.etag) etags.contributors = outcome.etag;
+          return (outcome.data ?? []).map(normalizeContributor);
+        })
+        .catch(() => {
+          unavailable.push('contributors');
+          return [] as GitHubContributorSummary[];
+        });
+    }
 
     const [readme, languages, tree, contributors] = await Promise.all([
-      this.fetchReadme(roomRef.owner, roomRef.repo).catch((error: unknown) => {
-        unavailable.push('readme');
-        return fallbackReadme(error);
-      }),
-      this.fetchLanguages(roomRef.owner, roomRef.repo).catch(() => {
-        unavailable.push('languages');
-        return {};
-      }),
-      this.fetchTree(roomRef.owner, roomRef.repo, repo.defaultBranch).catch(() => {
-        unavailable.push('tree');
-        return { entries: [], truncated: false };
-      }),
-      this.fetchContributors(roomRef.owner, roomRef.repo).catch(() => {
-        unavailable.push('contributors');
-        return [];
-      }),
+      readmePromise,
+      languagesPromise,
+      treePromise,
+      contributorsPromise,
     ]);
 
-    return {
+    const data: GitHubRoomData = {
       repo,
       readme,
       languages,
@@ -163,6 +454,52 @@ export class GitHubApiClient {
       treeTruncated: tree.truncated,
       contributors,
       unavailable,
+      ...(deferred.length > 0 ? { deferred } : {}),
+    };
+
+    return {
+      data,
+      etags,
+      fullyRevalidated: fetchedOrSkippedCount > 0 && revalidatedCount === fetchedOrSkippedCount,
+    };
+  }
+
+  /** Lazy loader for the README endpoint (item #4). */
+  async loadReadme(
+    roomRef: RoomRepositoryRef,
+    options: { etag?: string } = {},
+  ): Promise<LoadReadmeResult> {
+    const outcome = await this.revalidateReadme(roomRef.owner, roomRef.repo, options.etag);
+    if (outcome.notModified) {
+      // 304 without a persisted body — caller must supply one. Return placeholder.
+      return {
+        readme: { plainText: null, truncated: false, unavailableReason: 'README unchanged.' },
+        etag: options.etag,
+      };
+    }
+    return {
+      readme: outcome.readme,
+      etag: outcome.etag ?? options.etag,
+    };
+  }
+
+  /** Lazy loader for the contributors endpoint (item #3). */
+  async loadContributors(
+    roomRef: RoomRepositoryRef,
+    options: { etag?: string } = {},
+  ): Promise<LoadContributorsResult> {
+    const outcome = await this.revalidate<ContributorApiModel[]>(
+      'GET /repos/{owner}/{repo}/contributors',
+      { owner: roomRef.owner, repo: roomRef.repo, per_page: 5, anon: false },
+      options.etag,
+      false,
+    );
+    if (outcome.notModified) {
+      return { contributors: [], etag: options.etag };
+    }
+    return {
+      contributors: (outcome.data ?? []).map(normalizeContributor),
+      etag: outcome.etag ?? options.etag,
     };
   }
 
@@ -170,14 +507,22 @@ export class GitHubApiClient {
     route: string,
     routeBaseParameters: Record<string, unknown>,
     options: ListRepoOptions,
-  ): Promise<GitHubRepoSummary[]> {
+  ): Promise<LoadRepoListResult> {
     const perPage = options.perPage ?? 100;
+    const persistedEtags = options.persisted?.pageEtags ?? {};
+    const persistedRepos = options.persisted?.repos ?? [];
+    const persistedPageSize = perPage; // assume same per-page when revalidating
+
     const repos: GitHubRepoSummary[] = [];
+    const pageEtags: Record<number, string> = {};
     let page = 1;
     let hasNext = true;
+    let revalidatedPages = 0;
+    let totalPages = 0;
 
     while (hasNext) {
-      const response = await this.requestWithCache<RepoApiModel[]>(
+      const persistedEtag = persistedEtags[page];
+      const outcome = await this.revalidate<RepoApiModel[]>(
         route,
         {
           ...routeBaseParameters,
@@ -186,96 +531,128 @@ export class GitHubApiClient {
           per_page: perPage,
           page,
         },
+        persistedEtag,
         true,
       );
+      totalPages += 1;
 
-      repos.push(...response.data.map(normalizeRepo));
+      let pageData: GitHubRepoSummary[];
+      if (outcome.notModified) {
+        // Reuse the slice of persisted repos belonging to this page.
+        const start = (page - 1) * persistedPageSize;
+        pageData = persistedRepos.slice(start, start + persistedPageSize);
+        if (persistedEtag) pageEtags[page] = persistedEtag;
+        revalidatedPages += 1;
+      } else if (outcome.data) {
+        pageData = outcome.data.map(normalizeRepo);
+        if (outcome.etag) pageEtags[page] = outcome.etag;
+      } else {
+        pageData = [];
+      }
+
+      repos.push(...pageData);
       options.onProgress?.({
         page,
-        pageSize: response.data.length,
+        pageSize: pageData.length,
         accumulatedCount: repos.length,
       });
 
-      hasNext = response.data.length === perPage;
+      hasNext = pageData.length === perPage;
       page += 1;
     }
 
-    return repos;
+    return {
+      repos,
+      pageEtags,
+      fullyRevalidated: totalPages > 0 && revalidatedPages === totalPages,
+    };
   }
 
-  private async fetchReadme(owner: string, repo: string): Promise<GitHubReadmePayload> {
-    const response = await this.requestWithCache<ReadmeApiModel>(
+  private async revalidateReadme(
+    owner: string,
+    repo: string,
+    etag: string | undefined,
+  ): Promise<{ notModified: boolean; readme: GitHubReadmePayload; etag?: string; status: number }> {
+    const outcome = await this.revalidate<ReadmeApiModel>(
       'GET /repos/{owner}/{repo}/readme',
       { owner, repo },
+      etag,
       false,
     );
-
-    if (response.data.encoding !== 'base64') {
+    if (outcome.notModified) {
       return {
-        plainText: null,
-        truncated: false,
-        unavailableReason: 'Unsupported README encoding.',
+        notModified: true,
+        readme: { plainText: null, truncated: false },
+        etag,
+        status: outcome.status,
+      };
+    }
+    const body = outcome.data;
+    if (!body) {
+      return {
+        notModified: false,
+        readme: { plainText: null, truncated: false, unavailableReason: 'README empty.' },
+        etag: outcome.etag,
+        status: outcome.status,
+      };
+    }
+    if (body.encoding !== 'base64') {
+      return {
+        notModified: false,
+        readme: { plainText: null, truncated: false, unavailableReason: 'Unsupported README encoding.' },
+        etag: outcome.etag,
+        status: outcome.status,
+      };
+    }
+    return {
+      notModified: false,
+      readme: {
+        plainText: decodeBase64ToText(body.content),
+        truncated: body.size > 65_536,
+      },
+      etag: outcome.etag,
+      status: outcome.status,
+    };
+  }
+
+  /**
+   * Issues a single request with optional `If-None-Match` revalidation,
+   * bypassing the in-memory cache (the persistent ETag cache supplies the
+   * body on `304 Not Modified`). Updates the rate-limit tracker.
+   */
+  private async revalidate<T>(
+    route: string,
+    parameters: Record<string, unknown>,
+    etag: string | undefined,
+    backoffEnabled: boolean,
+  ): Promise<{ notModified: boolean; data: T | null; etag?: string; status: number; headers: HeaderBag }> {
+    const requestParameters: Record<string, unknown> = { ...parameters };
+    if (etag) {
+      const callerHeaders = (parameters.headers as Record<string, string> | undefined) ?? {};
+      requestParameters.headers = { ...callerHeaders, 'if-none-match': etag };
+    }
+
+    const response = await this.requestWithCache<T>(route, requestParameters, backoffEnabled);
+    this.recordRateLimit(response.headers, response.status === 304);
+
+    if (response.status === 304) {
+      return {
+        notModified: true,
+        data: null,
+        etag,
+        status: 304,
+        headers: response.headers,
       };
     }
 
+    const newEtag = etagHeader(response.headers);
     return {
-      plainText: decodeBase64ToText(response.data.content),
-      truncated: response.data.size > 65_536,
+      notModified: false,
+      data: response.data,
+      etag: newEtag,
+      status: response.status,
+      headers: response.headers,
     };
-  }
-
-  private async fetchLanguages(owner: string, repo: string): Promise<Record<string, number>> {
-    const response = await this.requestWithCache<Record<string, number>>(
-      'GET /repos/{owner}/{repo}/languages',
-      { owner, repo },
-      false,
-    );
-    return response.data;
-  }
-
-  private async fetchTree(
-    owner: string,
-    repo: string,
-    defaultBranch: string,
-  ): Promise<{ entries: GitHubRepoTreeEntry[]; truncated: boolean }> {
-    const response = await this.requestWithCache<RepoTreeApiModel>(
-      'GET /repos/{owner}/{repo}/git/trees/{tree_sha}',
-      {
-        owner,
-        repo,
-        tree_sha: defaultBranch,
-        recursive: 1,
-      },
-      false,
-    );
-
-    const entries = (response.data.tree ?? [])
-      .filter((entry) => !entry.path.includes('/'))
-      .map((entry) => ({
-        path: entry.path,
-        type: entry.type,
-      }));
-
-    return {
-      entries,
-      truncated: Boolean(response.data.truncated),
-    };
-  }
-
-  private async fetchContributors(owner: string, repo: string): Promise<GitHubContributorSummary[]> {
-    const response = await this.requestWithCache<ContributorApiModel[]>(
-      'GET /repos/{owner}/{repo}/contributors',
-      { owner, repo, per_page: 5, anon: false },
-      false,
-    );
-
-    return response.data.map((contributor) => ({
-      id: contributor.id,
-      login: contributor.login,
-      avatarUrl: contributor.avatar_url,
-      profileUrl: contributor.html_url,
-      contributions: contributor.contributions,
-    }));
   }
 
   private async requestWithCache<T>(
@@ -306,6 +683,38 @@ export class GitHubApiClient {
       expiresAt: Date.now() + this.cacheTtlMs,
     });
     return value;
+  }
+
+  private recordRateLimit(headers: HeaderBag, wasConditional: boolean): void {
+    const limit = parseIntegerHeader(headers['x-ratelimit-limit']);
+    const remaining = parseIntegerHeader(headers['x-ratelimit-remaining']);
+    const resetEpoch = parseIntegerHeader(headers['x-ratelimit-reset']);
+
+    // Some test fixtures and 304 responses may not carry rate-limit headers.
+    // In that case keep the previous reading but still publish a "lastWasConditional"
+    // update so subscribers can show the saved-call indicator.
+    if (limit === null && remaining === null && !this.rateLimit) {
+      return;
+    }
+
+    const snapshot: RateLimitSnapshot = {
+      limit: limit ?? this.rateLimit?.limit ?? null,
+      remaining: remaining ?? this.rateLimit?.remaining ?? null,
+      resetAt:
+        resetEpoch !== null ? new Date(resetEpoch * 1_000).toISOString() : this.rateLimit?.resetAt ?? null,
+      lastWasConditional: wasConditional,
+      observedAt: new Date().toISOString(),
+    };
+
+    this.rateLimit = snapshot;
+    rateLimitTracker.publish(snapshot);
+    for (const listener of this.rateLimitListeners) {
+      try {
+        listener(snapshot);
+      } catch {
+        // listener errors must not break request flow
+      }
+    }
   }
 
   private async withBackoff<T>(
@@ -355,6 +764,22 @@ function normalizeRepo(repo: RepoApiModel): GitHubRepoSummary {
     isPrivate: repo.private,
     defaultBranch: repo.default_branch,
   };
+}
+
+function normalizeContributor(contributor: ContributorApiModel): GitHubContributorSummary {
+  return {
+    id: contributor.id,
+    login: contributor.login,
+    avatarUrl: contributor.avatar_url,
+    profileUrl: contributor.html_url,
+    contributions: contributor.contributions,
+  };
+}
+
+function etagHeader(headers: HeaderBag): string | undefined {
+  const value = headers.etag ?? headers.ETag;
+  if (value === undefined) return undefined;
+  return String(value);
 }
 
 function fallbackReadme(error: unknown): GitHubReadmePayload {

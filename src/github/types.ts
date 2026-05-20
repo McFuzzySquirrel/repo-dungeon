@@ -70,6 +70,14 @@ export interface GitHubRoomData {
   treeTruncated: boolean;
   contributors: GitHubContributorSummary[];
   unavailable: Array<'readme' | 'languages' | 'tree' | 'contributors'>;
+  /**
+   * Endpoints that were intentionally **not fetched** as part of the initial
+   * room load (per the lazy-loading optimization). UI consumers should fetch
+   * them on-demand via `GitHubApiClient.loadReadme` / `loadContributors` when
+   * the user opens the corresponding tab. Distinct from `unavailable`, which
+   * means a fetch was attempted and failed.
+   */
+  deferred?: Array<'readme' | 'contributors'>;
 }
 
 export interface RepoPageProgress {

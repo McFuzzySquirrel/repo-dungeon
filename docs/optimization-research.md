@@ -1,5 +1,11 @@
 # Optimization Research: Reducing GitHub REST API Calls
 
+> **Status — implemented in this PR:** items #1, #2, #3, #4, and #5 (rate-limit
+> HUD + graceful degradation) are now live. See "Implementation notes" at the
+> bottom of each section and `src/github/api.ts` + `src/github/cache.ts` +
+> `src/ui/components/RoomInfoPanel.tsx` + `src/ui/components/RateLimitHud.tsx`.
+> Item #6 (PAT escape hatch) and the deferred follow-ups are still open.
+
 ## Context
 
 Repo Dungeon is a public-repos-only app (OAuth has been removed) and therefore
@@ -20,7 +26,7 @@ budget down further, ranked by impact and implementation effort.
 
 ## Recommended techniques (ranked)
 
-### 1. Conditional requests with `ETag` / `If-None-Match` — **biggest win**
+### 1. Conditional requests with `ETag` / `If-None-Match` — **biggest win** ✅ **Implemented**
 
 GitHub's REST API supports `ETag` and `Last-Modified` response headers. A
 follow-up request that returns **`304 Not Modified` does not count against the
@@ -70,9 +76,23 @@ if (res.status === 304 && cached) {
 // 200 → persist new etag from res.headers.etag
 ```
 
+**Implementation notes**
+
+- Per-endpoint ETags are persisted in a new `etags: RoomDetailEtags` field on
+  `RoomDetailSnapshot` (and `pageEtags: Record<number, string>` on
+  `RepoListSnapshot`) — see `src/github/cache.ts`.
+- `GitHubApiClient.loadRoomData(roomRef, { persisted })` and
+  `listPublicReposWithRevalidation(username, { persisted })` send
+  `If-None-Match` on every sub-fetch and reuse the persisted slice on 304.
+- When **every** fetched endpoint returns 304, the helpers call
+  `touchCachedRoomDetailFreshness` / `touchCachedRepoListFreshness` so we
+  bump the `fetchedAt` timestamp without re-serializing the body.
+- `RoomInfoPanel` and `useGitHubData` now thread the persisted snapshot
+  through these calls.
+
 ---
 
-### 2. Reuse the repo summary returned by the list call — **−1 call/room**
+### 2. Reuse the repo summary returned by the list call — **−1 call/room** ✅ **Implemented**
 
 `loadRoomData` currently re-fetches `GET /repos/{owner}/{repo}` even though
 the same repo object was already returned (and cached) by the repo-list call.
@@ -81,26 +101,45 @@ the same repo object was already returned (and cached) by the repo-list call.
 when a field that is actually needed is missing. Saves **1 call per first-time
 room visit** and is essentially a free refactor.
 
+**Implementation notes**
+
+- `loadRoomData` accepts `options.summary?: GitHubRepoSummary`. When supplied
+  (and the owner/repo match), `GET /repos/{owner}/{repo}` is skipped entirely.
+- `RoomInfoPanel.fetchRoomData` reconstructs the summary from the
+  `RoomEnteredEvent.repo` payload (the DungeonScene already spreads the full
+  summary into the event), via the `buildSummaryFromEvent` helper.
+
 ---
 
-### 3. Lazy-load `/contributors` and `/languages` — **−2 calls/room**
+### 3. Lazy-load `/contributors` and `/languages` — **−2 calls/room** ✅ **Implemented (contributors + README; languages kept eager)**
 
 Neither contributors nor the full language breakdown is required to render a
 room. `repo.language` (from the summary) already covers biome selection.
 
-**Change:** fetch contributors only when the player opens the NPC roster, and
-`/languages` only when the full breakdown panel is displayed. Many rooms a
-player walks through are never inspected in detail — those become **0–1 calls
-instead of 5**.
+**Implementation notes**
+
+- `loadRoomData` accepts `skipReadme` and `skipContributors` flags.
+  `RoomInfoPanel` sets both to `true`; the data is fetched lazily via
+  `loadReadme(roomRef, { etag })` / `loadContributors(roomRef, { etag })` only
+  when the user opens the README or Contributors tab.
+- `GitHubRoomData.deferred?: Array<'readme' | 'contributors'>` marks endpoints
+  that were intentionally skipped (distinct from `unavailable`, which means a
+  fetch was attempted and failed). The panel shows a spinner for deferred tabs
+  until the lazy load resolves, then merges the slice back into the persisted
+  snapshot so the next session gets a complete cache hit.
+- `/languages` is **kept in the initial fan-out** because the default Overview
+  tab renders the language bar; lazy-loading it would degrade first-paint UX.
+  Net per-room cost on cold cache: **languages + tree = 2 calls** (with summary
+  reuse, item #2). With ETags (#1), subsequent loads cost 0.
 
 ---
 
-### 4. Fold the README fetch into the tree fetch
+### 4. Fold the README fetch into the tree fetch ✅ **Implemented via lazy README**
 
-`GET /repos/{owner}/{repo}/contents/` already returns the top-level entries,
-including the README filename. Detect the README from that listing and fetch
-the blob only when needed, instead of issuing a separate `GET /readme` call up
-front. Combined with #3, the per-room cost drops from 5 to ~2 on cache miss.
+Rather than parsing the README path out of the tree response, the
+implementation simply defers the README fetch to first README-tab open (see
+item #3 above). The end-to-end savings are identical (−1 call on rooms that
+are never inspected) and the code path is simpler.
 
 ---
 
@@ -133,24 +172,40 @@ only a handful of repos have actually changed.
 
 ---
 
-### 8. Rate-limit-aware graceful degradation
+### 8. Rate-limit-aware graceful degradation ✅ **Implemented**
 
 Read `X-RateLimit-Remaining` from every response. When it drops below a
 threshold (e.g. 5), automatically serve stale-but-cached data for the
 remainder of the window instead of failing. This doesn't reduce calls, but it
 converts the cliff at 60 into smooth degradation.
 
+**Implementation notes**
+
+- `GitHubApiClient.recordRateLimit` extracts `x-ratelimit-{limit,remaining,reset}`
+  from every response (including 304s) and publishes a `RateLimitSnapshot` to
+  both per-client subscribers and the module-level `rateLimitTracker`.
+- `RoomInfoPanel.fetchRoomData` falls back to a stale persisted snapshot when a
+  request fails with `kind: 'rate_limit'`, so players still see room contents
+  past the cliff.
+
 ---
 
-### 9. Surface the budget in the HUD
+### 9. Surface the budget in the HUD ✅ **Implemented**
 
 Display "API calls remaining this hour: N/60" in the HUD. Players self-
 regulate exploration when the cost is visible. Cheap to add, gives users
 agency, and reduces support load when someone does hit the limit.
 
+**Implementation notes**
+
+- `src/ui/components/RateLimitHud.tsx` subscribes to `rateLimitTracker`,
+  renders `N/limit resets in Xm`, and colour-codes warn/critical when
+  `remaining` drops below 15 / 5. A `✓ cached` pip flashes briefly whenever
+  the most recent request was a free `304 Not Modified`.
+
 ---
 
-### 10. Optional escape hatch — per-user PAT
+### 10. Optional escape hatch — per-user PAT (not yet implemented)
 
 Add an opt-in "paste a personal access token" field. A user-provided classic
 PAT or fine-grained read-only token raises the budget to **5 000 calls/hr**
@@ -162,14 +217,14 @@ OAuth flow that was removed.
 
 ## Suggested implementation order
 
-| # | Change | Effort | Expected impact |
-|---|--------|--------|-----------------|
-| 1 | ETag / 304 revalidation                          | Medium | Largest single reduction, no UX change |
-| 2 | Reuse repo summary from list call                | Low    | −1 call/room |
-| 3 | Lazy-load contributors + languages               | Medium | −2 calls/room for shallow visits |
-| 4 | Fold README into tree fetch                      | Low    | −1 call/room |
-| 5 | Rate-limit-aware degradation + HUD counter       | Low    | UX/reliability |
-| 6 | Optional PAT input                               | Low    | Escape hatch if telemetry shows users still hit the wall |
+| # | Change | Effort | Expected impact | Status |
+|---|--------|--------|-----------------|--------|
+| 1 | ETag / 304 revalidation                          | Medium | Largest single reduction, no UX change | ✅ |
+| 2 | Reuse repo summary from list call                | Low    | −1 call/room | ✅ |
+| 3 | Lazy-load contributors + languages               | Medium | −2 calls/room for shallow visits | ✅ (contributors + README; languages kept eager) |
+| 4 | Fold README into tree fetch                      | Low    | −1 call/room | ✅ (via lazy README, simpler than tree-fold) |
+| 5 | Rate-limit-aware degradation + HUD counter       | Low    | UX/reliability | ✅ |
+| 6 | Optional PAT input                               | Low    | Escape hatch if telemetry shows users still hit the wall | ⏩ deferred |
 
 Items 1–4 alone take a typical returning-player session from ~5 calls/room on
 cache miss to ~1–2 — and effectively to 0 for any repo whose ETag still
