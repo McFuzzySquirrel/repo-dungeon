@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { GAME_DIMENSIONS } from '@/game/config/gameConfig';
 import type { PlayerClass } from '@/game/config/classes';
+import { resolveAssetPath } from '@/game/config/assetPaths';
 import { getAllNpcSprites, getAllPlayerClassSprites } from '@/game/config/characterSprites';
 import { DungeonGenerator } from '@/game/systems/DungeonGenerator';
 import type { DungeonEdge, DungeonMap, DungeonPoint, DungeonRoomNode, DungeonZone } from '@/game/systems/dungeonTypes';
@@ -931,8 +932,8 @@ export class DungeonScene extends Phaser.Scene {
       this.load.image(sprite.textureKey, sprite.assetPath);
     }
 
-    this.load.image('sprite-player', '/assets/sprites/player.svg');
-    this.load.image('sprite-door', '/assets/sprites/door.svg');
+    this.load.image('sprite-player', resolveAssetPath('/assets/sprites/player.svg'));
+    this.load.image('sprite-door', resolveAssetPath('/assets/sprites/door.svg'));
   }
 
   private updateAmbientForBiome(biomeId?: string): void {

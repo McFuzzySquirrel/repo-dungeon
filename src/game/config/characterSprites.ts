@@ -1,4 +1,5 @@
 import type { PlayerClass } from '@/game/config/classes';
+import { resolveAssetPath } from '@/game/config/assetPaths';
 
 export interface CharacterSpriteDefinition {
   id: string;
@@ -12,22 +13,22 @@ const PLAYER_CLASS_SPRITES: Record<PlayerClass, CharacterSpriteDefinition> = {
   explorer: {
     id: 'explorer',
     textureKey: 'sprite-player-explorer',
-    assetPath: '/assets/sprites/player-explorer.svg',
+    assetPath: resolveAssetPath('/assets/sprites/player-explorer.svg'),
   },
   archivist: {
     id: 'archivist',
     textureKey: 'sprite-player-archivist',
-    assetPath: '/assets/sprites/player-archivist.svg',
+    assetPath: resolveAssetPath('/assets/sprites/player-archivist.svg'),
   },
   hacker: {
     id: 'hacker',
     textureKey: 'sprite-player-hacker',
-    assetPath: '/assets/sprites/player-hacker.svg',
+    assetPath: resolveAssetPath('/assets/sprites/player-hacker.svg'),
   },
   contributor: {
     id: 'contributor',
     textureKey: 'sprite-player-contributor',
-    assetPath: '/assets/sprites/player-contributor.svg',
+    assetPath: resolveAssetPath('/assets/sprites/player-contributor.svg'),
   },
 };
 
@@ -35,17 +36,17 @@ const NPC_SPRITES: Record<NpcSpriteId, CharacterSpriteDefinition> = {
   scribe: {
     id: 'scribe',
     textureKey: 'sprite-npc-scribe',
-    assetPath: '/assets/sprites/npc-scribe.svg',
+    assetPath: resolveAssetPath('/assets/sprites/npc-scribe.svg'),
   },
   smith: {
     id: 'smith',
     textureKey: 'sprite-npc-smith',
-    assetPath: '/assets/sprites/npc-smith.svg',
+    assetPath: resolveAssetPath('/assets/sprites/npc-smith.svg'),
   },
   scout: {
     id: 'scout',
     textureKey: 'sprite-npc-scout',
-    assetPath: '/assets/sprites/npc-scout.svg',
+    assetPath: resolveAssetPath('/assets/sprites/npc-scout.svg'),
   },
 };
 

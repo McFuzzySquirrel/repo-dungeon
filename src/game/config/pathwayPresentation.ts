@@ -1,4 +1,5 @@
 import { getBiomePresentation } from '@/game/config/biomePresentation';
+import { resolveAssetPath } from '@/game/config/assetPaths';
 
 export type PathwaySpriteId = 'straight' | 'corner' | 'end' | 'tee' | 'cross';
 
@@ -22,7 +23,7 @@ const PATHWAY_SPRITES: Record<PathwaySpriteId, PathwaySpriteDefinition> = {
   straight: {
     id: 'straight',
     textureKey: 'pathway-straight',
-    assetPath: '/assets/sprites/pathways/straight.svg',
+    assetPath: resolveAssetPath('/assets/sprites/pathways/straight.svg'),
     width: 32,
     height: 32,
     swapHint: 'Base orientation is horizontal, left-to-right through the center of the tile.',
@@ -30,7 +31,7 @@ const PATHWAY_SPRITES: Record<PathwaySpriteId, PathwaySpriteDefinition> = {
   corner: {
     id: 'corner',
     textureKey: 'pathway-corner',
-    assetPath: '/assets/sprites/pathways/corner.svg',
+    assetPath: resolveAssetPath('/assets/sprites/pathways/corner.svg'),
     width: 32,
     height: 32,
     swapHint: 'Base orientation connects right and down from the center joint.',
@@ -38,7 +39,7 @@ const PATHWAY_SPRITES: Record<PathwaySpriteId, PathwaySpriteDefinition> = {
   end: {
     id: 'end',
     textureKey: 'pathway-end',
-    assetPath: '/assets/sprites/pathways/end.svg',
+    assetPath: resolveAssetPath('/assets/sprites/pathways/end.svg'),
     width: 32,
     height: 32,
     swapHint: 'Base orientation points from the center joint toward the right edge.',
@@ -46,7 +47,7 @@ const PATHWAY_SPRITES: Record<PathwaySpriteId, PathwaySpriteDefinition> = {
   tee: {
     id: 'tee',
     textureKey: 'pathway-tee',
-    assetPath: '/assets/sprites/pathways/tee.svg',
+    assetPath: resolveAssetPath('/assets/sprites/pathways/tee.svg'),
     width: 32,
     height: 32,
     swapHint: 'Base orientation opens left, right, and down from the center joint.',
@@ -54,7 +55,7 @@ const PATHWAY_SPRITES: Record<PathwaySpriteId, PathwaySpriteDefinition> = {
   cross: {
     id: 'cross',
     textureKey: 'pathway-cross',
-    assetPath: '/assets/sprites/pathways/cross.svg',
+    assetPath: resolveAssetPath('/assets/sprites/pathways/cross.svg'),
     width: 32,
     height: 32,
     swapHint: 'Base orientation is a four-way intersection centered in the tile.',
