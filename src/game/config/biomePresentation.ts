@@ -1,4 +1,5 @@
 import type { BiomeTheme } from '@/game/config/biomes';
+import { resolveAssetPath } from '@/game/config/assetPaths';
 
 export interface BiomePalette {
   floor: number;
@@ -23,7 +24,7 @@ export interface BiomePresentation {
 const DEFAULT_PRESENTATION: BiomePresentation = {
   biomeId: 'lost-archive',
   tilesetTextureKey: 'tileset-lost-archive',
-  tilesetAssetPath: '/assets/tilesets/lost-archive.svg',
+  tilesetAssetPath: resolveAssetPath('/assets/tilesets/lost-archive.svg'),
   placeholderPattern: 'parchment',
   palette: {
     floor: 0x6b5d4f,
@@ -33,7 +34,7 @@ const DEFAULT_PRESENTATION: BiomePresentation = {
   },
   ambientAudio: {
     key: 'ambient-lost-archive',
-    path: '/assets/audio/ambient/lost-archive.ogg',
+    path: resolveAssetPath('/assets/audio/ambient/lost-archive.ogg'),
     volume: 0.2,
   },
 };
@@ -42,7 +43,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
   'neon-circuit-city': {
     biomeId: 'neon-circuit-city',
     tilesetTextureKey: 'tileset-neon-circuit-city',
-    tilesetAssetPath: '/assets/tilesets/neon-circuit-city.svg',
+    tilesetAssetPath: resolveAssetPath('/assets/tilesets/neon-circuit-city.svg'),
     placeholderPattern: 'grid',
     palette: {
       floor: 0x243a7a,
@@ -52,14 +53,14 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
     },
     ambientAudio: {
       key: 'ambient-neon-circuit-city',
-      path: '/assets/audio/ambient/neon-circuit-city.ogg',
+      path: resolveAssetPath('/assets/audio/ambient/neon-circuit-city.ogg'),
       volume: 0.22,
     },
   },
   'ancient-library': {
     biomeId: 'ancient-library',
     tilesetTextureKey: 'tileset-ancient-library',
-    tilesetAssetPath: '/assets/tilesets/ancient-library.svg',
+    tilesetAssetPath: resolveAssetPath('/assets/tilesets/ancient-library.svg'),
     placeholderPattern: 'stone',
     palette: {
       floor: 0x70553f,
@@ -69,14 +70,14 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
     },
     ambientAudio: {
       key: 'ambient-ancient-library',
-      path: '/assets/audio/ambient/ancient-library.ogg',
+      path: resolveAssetPath('/assets/audio/ambient/ancient-library.ogg'),
       volume: 0.18,
     },
   },
   'iron-forge': {
     biomeId: 'iron-forge',
     tilesetTextureKey: 'tileset-iron-forge',
-    tilesetAssetPath: '/assets/tilesets/iron-forge.svg',
+    tilesetAssetPath: resolveAssetPath('/assets/tilesets/iron-forge.svg'),
     placeholderPattern: 'forge',
     palette: {
       floor: 0x594238,
@@ -86,14 +87,14 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
     },
     ambientAudio: {
       key: 'ambient-iron-forge',
-      path: '/assets/audio/ambient/iron-forge.ogg',
+      path: resolveAssetPath('/assets/audio/ambient/iron-forge.ogg'),
       volume: 0.2,
     },
   },
   'wind-temple': {
     biomeId: 'wind-temple',
     tilesetTextureKey: 'tileset-wind-temple',
-    tilesetAssetPath: '/assets/tilesets/wind-temple.svg',
+    tilesetAssetPath: resolveAssetPath('/assets/tilesets/wind-temple.svg'),
     placeholderPattern: 'wind',
     palette: {
       floor: 0x6ba8a1,
@@ -103,14 +104,14 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
     },
     ambientAudio: {
       key: 'ambient-wind-temple',
-      path: '/assets/audio/ambient/wind-temple.ogg',
+      path: resolveAssetPath('/assets/audio/ambient/wind-temple.ogg'),
       volume: 0.17,
     },
   },
   'deep-dungeon': {
     biomeId: 'deep-dungeon',
     tilesetTextureKey: 'tileset-deep-dungeon',
-    tilesetAssetPath: '/assets/tilesets/deep-dungeon.svg',
+    tilesetAssetPath: resolveAssetPath('/assets/tilesets/deep-dungeon.svg'),
     placeholderPattern: 'dungeon',
     palette: {
       floor: 0x474747,
@@ -120,14 +121,14 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
     },
     ambientAudio: {
       key: 'ambient-deep-dungeon',
-      path: '/assets/audio/ambient/deep-dungeon.ogg',
+      path: resolveAssetPath('/assets/audio/ambient/deep-dungeon.ogg'),
       volume: 0.16,
     },
   },
   'utility-vault': {
     biomeId: 'utility-vault',
     tilesetTextureKey: 'tileset-utility-vault',
-    tilesetAssetPath: '/assets/tilesets/utility-vault.svg',
+    tilesetAssetPath: resolveAssetPath('/assets/tilesets/utility-vault.svg'),
     placeholderPattern: 'pipes',
     palette: {
       floor: 0x4e5a61,
@@ -137,14 +138,14 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
     },
     ambientAudio: {
       key: 'ambient-utility-vault',
-      path: '/assets/audio/ambient/utility-vault.ogg',
+      path: resolveAssetPath('/assets/audio/ambient/utility-vault.ogg'),
       volume: 0.16,
     },
   },
   'garden-ruins': {
     biomeId: 'garden-ruins',
     tilesetTextureKey: 'tileset-garden-ruins',
-    tilesetAssetPath: '/assets/tilesets/garden-ruins.svg',
+    tilesetAssetPath: resolveAssetPath('/assets/tilesets/garden-ruins.svg'),
     placeholderPattern: 'vines',
     palette: {
       floor: 0x7f9f76,
@@ -154,7 +155,7 @@ const BIOME_PRESENTATIONS: Record<string, BiomePresentation> = {
     },
     ambientAudio: {
       key: 'ambient-garden-ruins',
-      path: '/assets/audio/ambient/garden-ruins.ogg',
+      path: resolveAssetPath('/assets/audio/ambient/garden-ruins.ogg'),
       volume: 0.19,
     },
   },
