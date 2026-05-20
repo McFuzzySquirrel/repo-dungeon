@@ -15,8 +15,8 @@ import { WelcomeScreen } from '@/ui/components/WelcomeScreen';
 import { HelpOverlay } from '@/ui/components/HelpOverlay';
 import { ProgressionController } from '@/ui/components/ProgressionController';
 import { XpHud } from '@/ui/components/XpHud';
+import { RateLimitHud } from '@/ui/components/RateLimitHud';
 import { decodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
-import { useGitHubAuth } from '@/ui/hooks/useGitHubAuth';
 import { useSessionStore } from '@/store/sessionStore';
 import { useDungeonStore } from '@/store/dungeonStore';
 import type { GitHubRepoSummary } from '@/github/types';
@@ -32,7 +32,6 @@ export function AppShell() {
   const [game, setGame] = useState<Phaser.Game | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
-  const auth = useGitHubAuth();
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
   const dungeonSeed = useDungeonStore((state) => state.seed);
   const setSeed = useDungeonStore((state) => state.setSeed);
@@ -108,11 +107,12 @@ export function AppShell() {
             <GamePolishOverlay />
             <XpHud />
             <TouchControls />
+            <RateLimitHud />
             <GameHudControls onOpenHelp={openHelp} onOpenHome={() => setShowWelcome(true)} />
           </>
         )}
         {showWelcome && (
-          <WelcomeScreen auth={auth} onStart={handleStart} onLoadAndStart={handleLoadAndStart} onHelp={openHelp} />
+          <WelcomeScreen onStart={handleStart} onLoadAndStart={handleLoadAndStart} onHelp={openHelp} />
         )}
         {showHelp && <HelpOverlay onClose={closeHelp} />}
         <p className="overlay">Repo Dungeon</p>

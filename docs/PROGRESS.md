@@ -1,17 +1,26 @@
 # Project Progress
 
 ## Current State
-**Phase**: Phase 6 — Desktop & Release hardening (Complete)
-**Status**: Complete with post-release UX, auth-flow, mobile, and documentation updates  
-**Last Updated**: 2026-05-20T00:15:00Z  
+**Phase**: Phase 6 — Desktop & Release hardening (Complete) + Post-completion optimization layer
+**Status**: Complete with post-release UX, mobile, OAuth removal, GitHub REST optimization, and documentation updates  
+**Last Updated**: 2026-05-20T13:53:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Post-Completion Updates
+- [x] Removed GitHub OAuth flow and migrated to public-repos-only loading with a persistent `localStorage` cache (24 h repo lists / 7 d room details).
+  - Files: `src/github/api.ts`, `src/github/cache.ts`, `src/github/types.ts`, `src/ui/hooks/useGitHubData.ts`, `src/ui/components/WelcomeScreen.tsx`
+- [x] Implemented GitHub REST optimization layer (items #1–#5 from `docs/optimization-research.md`):
+  - **ETag / `If-None-Match` revalidation** — per-endpoint ETags persisted on `RoomDetailSnapshot`; per-page ETags on `RepoListSnapshot`. Re-issued requests return `304 Not Modified` and reuse the persisted body for **0 quota**.
+  - **Repo summary reuse** — `loadRoomData({ summary })` skips `GET /repos/{owner}/{repo}` when the caller already has it (cold-cache cost per room: 5 → 4 calls).
+  - **Lazy README & contributors** — defer until the relevant tab is opened (cold-cache cost per room: 4 → 2 calls in the common case).
+  - **Rate-limit-aware degradation** — `RoomInfoPanel` falls back to a stale persisted snapshot when a fetch fails with `kind: 'rate_limit'`.
+  - **HUD budget counter** — new `RateLimitHud` overlay surfaces `N/limit · resets in Xm`, colour-codes warn/critical, and flashes a `✓ cached` pip on free 304s.
+  - Files: `src/github/api.ts`, `src/github/cache.ts`, `src/github/types.ts`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/RateLimitHud.tsx`, `src/ui/styles/rate-limit-hud.css`, `src/ui/AppShell.tsx`, `tests/github-api.test.ts`, `tests/github-cache.test.ts`, `docs/optimization-research.md`
 - [x] Simplified GitHub entry UX so auth is owned once at the app shell, restored sessions are reflected on the welcome screen, and gameplay no longer renders a duplicate GitHub auth panel.
   - Files: `src/ui/AppShell.tsx`, `src/ui/components/WelcomeScreen.tsx`, `src/ui/hooks/useGitHubAuth.ts`, `tests/app-shell.test.tsx`, `tests/welcome-screen-auth.test.tsx`
-- [x] Corrected GitHub OAuth token exchange architecture for deployed web builds and Electron.
+- [x] Corrected GitHub OAuth token exchange architecture for deployed web builds and Electron. *(superseded by the OAuth removal above)*
   - Files: `src/github/auth.ts`, `src/electron/main.ts`, `src/electron/preload.ts`, `scripts/github-oauth-proxy.mjs`, `.github/workflows/deploy-pages.yml`, `README.md`, `tests/github-auth-exchange.test.ts`, `tests/github-auth-errors.test.ts`
-- [x] Added friendlier auth/setup error messaging and deployment guidance for local development and GitHub Pages.
+- [x] Added friendlier auth/setup error messaging and deployment guidance for local development and GitHub Pages. *(no longer needed after OAuth removal)*
   - Files: `src/ui/hooks/useGitHubAuth.ts`, `README.md`
 - [x] Added mobile touch controls for gameplay on coarse-pointer devices, including a virtual D-pad and interact button.
   - Files: `src/game/scenes/DungeonScene.ts`, `src/ui/components/TouchControls.tsx`, `src/ui/AppShell.tsx`, `src/ui/styles/touch-controls.css`, `tests/dungeon-scene.test.ts`, `tests/touch-controls.test.tsx`
@@ -184,4 +193,6 @@
 - Post-completion dungeon reload/auth-start visibility fix completed in commit `4496bc9`.
 - Post-completion welcome/auth UX and GitHub Pages OAuth exchange updates landed across commits `6992c24` and `e70dbd9`.
 - Post-completion mobile touch controls landed in commit `9e8da9f`, with follow-up CI/build fixes in `2343fc1` and `0634de2`, and final mobile/render + README screenshot updates in `c49a90c`.
+- Post-completion OAuth removal landed in an earlier commit on `main`; the app is now public-repos-only with a persistent `localStorage` cache keyed by username.
+- Post-completion GitHub REST optimization layer (ETag/304 revalidation, summary reuse, lazy README/contributors, rate-limit HUD, graceful degradation) landed in this PR. Cold-cache cost per room: **5 → 2** calls. Returning visits with unchanged data: **0 quota**.
 - Full-project validation currently passes (lint, typecheck, tests, build:web).

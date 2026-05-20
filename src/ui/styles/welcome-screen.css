@@ -309,6 +309,25 @@
   padding: 0.4rem 0.7rem;
 }
 
+/* Cache hint row */
+.welcome-cache-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.welcome-cache-age {
+  font-family: monospace;
+  font-size: 0.74rem;
+  color: #82a8bc;
+}
+
+.welcome-btn--refresh {
+  padding: 0.3rem 0.7rem;
+  font-size: 0.78rem;
+}
+
 /* Hint text */
 .welcome-hint {
   margin: 0;

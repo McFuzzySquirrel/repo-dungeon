@@ -6,7 +6,7 @@
 **Summary:** Repo Dungeon is a 2D pixel-art dungeon crawler where every room is a GitHub repository. Players navigate a procedurally generated dungeon built from their own (or any public user's) GitHub profile, discovering repo contents as they explore rooms. The game transforms the passive act of browsing a GitHub profile into an engaging, rewarding adventure — surfacing forgotten projects, showcasing skills, and compelling players to visit repos they'd never have found otherwise.
 **Target Platform:** Web browser (desktop + mobile) and desktop app (Electron wrapper). Primary development target is the web build; Electron packaging is a secondary deliverable.
 **Key Constraints:**
-- GitHub OAuth required for private repo access; unauthenticated public browsing supported with reduced rate limits (60 req/hr vs 5,000/hr)
+- Public-repos-only data loading via unauthenticated GitHub REST (60 req/hr/IP budget). *Post-MVP architectural change — see §2 and §8.1 note.*
 - Solo developer project assisted by GitHub Copilot agents
 - Pixel art retro visual style throughout
 - No real-time multiplayer in v1
@@ -19,6 +19,7 @@
 |---------|------|--------|---------|
 | 1.0 | 2026-05-19 | @McFuzzySquirrel | Initial PRD |
 | 1.1 | 2026-05-20 | GitHub Copilot | Align documentation with shipped web/Electron OAuth exchange flow, welcome-screen auth UX, and mobile touch controls |
+| 1.2 | 2026-05-20 | GitHub Copilot | **Post-MVP architectural pivot:** removed GitHub OAuth flow entirely; the app now loads public repositories only by GitHub username, with a persistent `localStorage` cache (24 h repo lists / 7 d room details). Added a GitHub REST optimization layer — ETag/`If-None-Match` revalidation (free `304 Not Modified` on unchanged data), repo-summary reuse from the list call, lazy README/contributors fetching tied to tab activation, rate-limit-aware degradation, and an in-HUD `N/60 · resets in Xm` budget counter. See [`docs/optimization-research.md`](./optimization-research.md) for the authoritative description of the current GitHub data flow. Earlier OAuth-flavoured requirements in §5.2, §7, §8.1, §10, §15, §17, and §18 are retained for historical context but **are no longer in effect**. |
 
 ---
 
@@ -279,14 +280,19 @@ repo-dungeon/
 
 ### 8.1 Authentication & Onboarding
 
+> **v1.2 update:** As of v1.2 the OAuth flow has been removed. FR-02, FR-03, and FR-04 below are retained for historical context but are no longer in effect. FR-05 has been superseded by the rate-limit-aware degradation + HUD counter described in v1.2 of the Version History.
+
 | ID | Requirement | Priority |
 |----|-------------|----------|
 | FR-01 | Player can enter any GitHub username to generate a dungeon from public repos, without authentication | Must |
-| FR-02 | Player can authenticate via GitHub OAuth to include private repos and increase API rate limits | Must |
-| FR-03 | OAuth token is stored in client-controlled browser storage (web) or Electron secure storage (desktop); browser builds may use a dedicated server-side/serverless token exchange endpoint, and secrets must never ship to the frontend bundle | Must |
-| FR-04 | Player can log out, clearing the stored token | Must |
-| FR-05 | If unauthenticated and rate limit is hit, display a friendly prompt to authenticate | Must |
+| FR-02 | ~~Player can authenticate via GitHub OAuth to include private repos and increase API rate limits~~ *(removed in v1.2)* | ~~Must~~ Removed |
+| FR-03 | ~~OAuth token is stored in client-controlled browser storage (web) or Electron secure storage (desktop); browser builds may use a dedicated server-side/serverless token exchange endpoint, and secrets must never ship to the frontend bundle~~ *(removed in v1.2)* | ~~Must~~ Removed |
+| FR-04 | ~~Player can log out, clearing the stored token~~ *(removed in v1.2)* | ~~Must~~ Removed |
+| FR-05 | If unauthenticated and rate limit is hit, display a friendly prompt and degrade gracefully (HUD counter + stale-cache fallback) | Must |
 | FR-06 | On first visit, a tutorial/intro sequence walks the player through the game concept | Should |
+| FR-15 *(v1.2)* | The app displays the remaining hourly GitHub REST budget in the HUD and falls back to the persisted cache when a request fails with `kind: 'rate_limit'` | Must |
+| FR-16 *(v1.2)* | All repo-list and room-detail requests must persist `ETag` headers and re-issue requests with `If-None-Match` after TTL expiry, treating `304 Not Modified` as a free cache hit | Must |
+| FR-17 *(v1.2)* | README and contributors data must be lazy-loaded on first tab open rather than fetched as part of the initial room fan-out | Should |
 
 ### 8.2 Dungeon Generation
 

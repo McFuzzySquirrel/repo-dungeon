@@ -1,46 +1,54 @@
-import { useCallback, useState } from 'react';
-import type { UseGitHubAuthResult } from '@/ui/hooks/useGitHubAuth';
+import { useCallback } from 'react';
 import { useGitHubData } from '@/ui/hooks/useGitHubData';
 import { useSessionStore } from '@/store/sessionStore';
 import type { GitHubRepoSummary } from '@/github/types';
 import '@/ui/styles/welcome-screen.css';
 
 interface WelcomeScreenProps {
-  auth: UseGitHubAuthResult;
   onStart: () => void;
   onLoadAndStart: (repos: GitHubRepoSummary[], username: string) => void;
   onHelp: () => void;
 }
 
-export function WelcomeScreen({ auth, onStart, onLoadAndStart, onHelp }: WelcomeScreenProps) {
+function formatCacheAge(fetchedAt: string): string {
+  const ageMs = Date.now() - new Date(fetchedAt).getTime();
+  const minutes = Math.floor(ageMs / 60_000);
+  if (minutes < 60) {
+    return minutes <= 1 ? 'just now' : `${minutes} minutes ago`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return hours === 1 ? '1 hour ago' : `${hours} hours ago`;
+  }
+  const days = Math.floor(hours / 24);
+  return days === 1 ? '1 day ago' : `${days} days ago`;
+}
+
+export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreenProps) {
   const usernameInput = useSessionStore((state) => state.usernameInput);
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
-  const data = useGitHubData(auth.session?.accessToken);
-  const [fetchError, setFetchError] = useState<string | null>(null);
-  const authenticatedUsername = auth.user?.login ?? usernameInput.trim();
-  const isAuthenticated = auth.status === 'authenticated' && authenticatedUsername.length > 0;
+  const data = useGitHubData();
 
-  const handlePublicLoad = useCallback(async () => {
-    setFetchError(null);
+  const handleLoad = useCallback(async () => {
     try {
-      const repos = await data.fetchReposForUsername(usernameInput.trim());
+      const repos = await data.fetchRepos(usernameInput.trim());
       onLoadAndStart(repos, usernameInput.trim());
-    } catch (e) {
-      setFetchError(e instanceof Error ? e.message : 'Failed to load repositories.');
+    } catch {
+      // error is surfaced via data.errorMessage
     }
   }, [data, usernameInput, onLoadAndStart]);
 
-  const handleAuthLoad = useCallback(async () => {
-    setFetchError(null);
+  const handleRefresh = useCallback(async () => {
     try {
-      const repos = await data.fetchReposForAuthenticatedUser();
-      onLoadAndStart(repos, auth.user?.login ?? usernameInput.trim());
-    } catch (e) {
-      setFetchError(e instanceof Error ? e.message : 'Failed to load repositories.');
+      const repos = await data.fetchRepos(usernameInput.trim(), { forceRefresh: true });
+      onLoadAndStart(repos, usernameInput.trim());
+    } catch {
+      // error is surfaced via data.errorMessage
     }
-  }, [data, auth.user, usernameInput, onLoadAndStart]);
+  }, [data, usernameInput, onLoadAndStart]);
 
   const isLoading = data.status === 'loading';
+  const hasCachedData = data.status === 'cache-hit' || (data.cacheAge !== null && data.repos.length > 0);
 
   return (
     <div className="welcome-overlay" role="main" aria-label="Welcome to Repo Dungeon">
@@ -62,39 +70,7 @@ export function WelcomeScreen({ auth, onStart, onLoadAndStart, onHelp }: Welcome
 
         {/* GitHub connection section */}
         <div className="welcome-github-section" aria-label="GitHub connection">
-          <p className="welcome-github-label">
-            {isAuthenticated ? 'Continue with your GitHub account' : 'Load your GitHub repositories'}
-          </p>
-
-          {auth.status === 'loading' ? (
-            <p className="welcome-load-progress" role="status" aria-live="polite">
-              Checking GitHub session…
-            </p>
-          ) : null}
-
-          {isAuthenticated ? (
-            <div className="welcome-auth-panel">
-              <div className="welcome-auth-row">
-                <span className="welcome-auth-badge">✓ {authenticatedUsername}</span>
-                <div className="welcome-auth-actions">
-                  <button
-                    className="welcome-btn welcome-btn--load"
-                    onClick={() => void handleAuthLoad()}
-                    disabled={isLoading}
-                  >
-                    {isLoading ? '⏳ Loading…' : `Continue as ${authenticatedUsername}`}
-                  </button>
-                  <button
-                    className="welcome-btn welcome-btn--ghost"
-                    onClick={() => void auth.logout()}
-                  >
-                    Logout
-                  </button>
-                </div>
-              </div>
-              <p className="welcome-auth-hint">Or load public repositories for a different account below.</p>
-            </div>
-          ) : null}
+          <p className="welcome-github-label">Load your GitHub repositories</p>
 
           <div className="welcome-github-row">
             <input
@@ -105,15 +81,15 @@ export function WelcomeScreen({ auth, onStart, onLoadAndStart, onHelp }: Welcome
               onChange={(e) => setUsernameInput(e.target.value)}
               onKeyDown={(e) => {
                 e.stopPropagation();
-                if (e.key === 'Enter' && usernameInput.trim() && !isLoading) void handlePublicLoad();
+                if (e.key === 'Enter' && usernameInput.trim() && !isLoading) void handleLoad();
               }}
               aria-label="GitHub username"
               autoComplete="off"
-              autoFocus={!isAuthenticated}
+              autoFocus
             />
             <button
               className="welcome-btn welcome-btn--load"
-              onClick={() => void handlePublicLoad()}
+              onClick={() => void handleLoad()}
               disabled={!usernameInput.trim() || isLoading}
             >
               {isLoading ? '⏳ Loading…' : '⚔️ Load & Start'}
@@ -121,23 +97,30 @@ export function WelcomeScreen({ auth, onStart, onLoadAndStart, onHelp }: Welcome
           </div>
 
           {isLoading && data.progress && (
-            <p className="welcome-load-progress">
+            <p className="welcome-load-progress" role="status" aria-live="polite">
               Fetching page {data.progress.page} — {data.progress.loadedCount} repos…
             </p>
           )}
 
-          {auth.status !== 'loading' && !isAuthenticated ? (
-            <button
-              className="welcome-btn welcome-btn--ghost welcome-btn--github-login"
-              onClick={() => void auth.beginLogin()}
-              disabled={isLoading}
-            >
-              🔑 Login with GitHub (private repos + higher rate limits)
-            </button>
-          ) : null}
+          {hasCachedData && data.cacheAge && !isLoading && (
+            <div className="welcome-cache-hint">
+              <span className="welcome-cache-age">
+                📦 Cached {formatCacheAge(data.cacheAge)} ({data.repos.length} repos)
+              </span>
+              <button
+                className="welcome-btn welcome-btn--ghost welcome-btn--refresh"
+                onClick={() => void handleRefresh()}
+                disabled={!usernameInput.trim() || isLoading}
+                title="Re-fetch repositories from GitHub"
+              >
+                🔄 Refresh
+              </button>
+            </div>
+          )}
 
-          {auth.errorMessage && <p className="welcome-error" role="alert">{auth.errorMessage}</p>}
-          {fetchError && <p className="welcome-error" role="alert">{fetchError}</p>}
+          {data.errorMessage && (
+            <p className="welcome-error" role="alert">{data.errorMessage}</p>
+          )}
         </div>
 
         <div className="welcome-actions welcome-actions--footer">

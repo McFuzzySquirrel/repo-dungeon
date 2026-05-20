@@ -14,102 +14,36 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 - Use minimap/full map overlays while exploring
 - Pick a class and gain XP, loot, and badges
 - Track progress with visited room stamps and profile stats
-- Sign in from the welcome screen to include private repositories and higher GitHub API rate limits
+- Repository data is cached locally so revisiting the same user loads instantly
+- A small HUD indicator shows your remaining GitHub API budget for the current hour
 
 ## Quick start (play locally)
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Open the local URL shown by Vite in your terminal.
+Open the local URL shown by Vite in your terminal. No environment configuration is required for the public-repos-only experience.
 
-If you want authenticated GitHub login in the browser during local development, you also need a local token exchange proxy:
+> **Note:** `.env.example` still contains some `VITE_GITHUB_*` variables and an `auth:proxy` script remains in `package.json`. These are vestigial from the original OAuth flow (since removed — the app now loads public repositories only) and are not consumed by the runtime. They can be safely ignored.
 
-```bash
-GITHUB_CLIENT_SECRET=your_oauth_app_client_secret npm run auth:proxy
-```
+## GitHub setup
 
-## GitHub OAuth setup
+No authentication is required. The game loads public repositories by GitHub username.
 
-GitHub login is optional for public repositories, but required if you want private repositories or higher API rate limits.
+Repository data and room details are cached in your browser's `localStorage` for up to 24 hours (room details for 7 days), keyed by username. Use the **🔄 Refresh** button on the welcome screen to re-fetch the latest data for a username at any time.
 
-Important: browser builds need a separate token exchange endpoint after GitHub redirects back with the authorization code. This repo now supports two authenticated paths:
+### Rate-limit handling & free revalidation
 
-- Electron: the desktop app can exchange the code in the main process when `GITHUB_CLIENT_SECRET` is set at launch time.
-- Web: browser builds can call a separate Node/serverless exchange endpoint via `VITE_GITHUB_TOKEN_EXCHANGE_URL`.
+Public, unauthenticated GitHub REST has a budget of **60 requests / hour / IP**. Repo Dungeon stays well inside that budget through:
 
-GitHub Pages is still a static host, so it cannot host that exchange endpoint itself. You need to deploy the proxy separately and point the Pages build at it.
+- **Persistent cache** — repo lists and room details are kept in `localStorage` for 24 h / 7 d respectively.
+- **ETag-driven revalidation** — every persisted entry remembers the response `ETag`. After TTL expiry the app re-issues the request with `If-None-Match`; GitHub replies `304 Not Modified` for unchanged data, **which does not count against the rate limit**. Returning visits to the same dungeon cost ~0 quota.
+- **Lazy README & contributors** — opening a room costs ~2 calls instead of 5; the README and contributors panels only fetch when their tab is opened, and the result is merged back into the persisted snapshot.
+- **In-HUD budget counter** — a small `API N/60 · resets in Xm` indicator in the top-right of the game view shows your remaining quota, lights up amber below 15 / red below 5, and flashes a `✓ cached` pip whenever a request was satisfied by a free 304. If the budget is exhausted, the panel falls back to stale cached data instead of failing.
 
-### Where to create the OAuth app
-
-GitHub OAuth apps live under your GitHub account settings, not the repository settings.
-
-1. Open `Settings` from your GitHub profile menu.
-2. Open `Developer settings`.
-3. Open `OAuth Apps`.
-4. Click `New OAuth App`.
-
-Direct links:
-
-- `https://github.com/settings/apps`
-- `https://github.com/settings/applications/new`
-
-### Local development setup
-
-Create a local OAuth app with:
-
-- `Homepage URL`: `http://localhost:5173/`
-- `Authorization callback URL`: `http://localhost:5173/`
-
-Then copy `.env.example` to `.env.local` and replace the placeholder client ID:
-
-```bash
-VITE_GITHUB_CLIENT_ID=your_local_oauth_app_client_id
-VITE_GITHUB_REDIRECT_URI=http://localhost:5173/
-VITE_GITHUB_OAUTH_SCOPE=read:user repo
-VITE_GITHUB_TOKEN_EXCHANGE_URL=http://localhost:8787/api/github/oauth/exchange
-```
-
-Restart `npm run dev` after editing `.env.local`.
-
-For local browser login, run the auth proxy in a separate terminal:
-
-```bash
-GITHUB_CLIENT_SECRET=your_local_oauth_app_client_secret npm run auth:proxy
-```
-
-For local Electron login, launch Electron with the same secret available in the environment:
-
-```bash
-GITHUB_CLIENT_SECRET=your_local_oauth_app_client_secret npm run electron
-```
-
-### GitHub Pages setup
-
-Create a separate OAuth app for the deployed site with:
-
-- `Homepage URL`: `https://mcfuzzysquirrel.github.io/repo-dungeon/`
-- `Authorization callback URL`: `https://mcfuzzysquirrel.github.io/repo-dungeon/`
-
-Then add these repository-level GitHub Actions variables:
-
-1. Open repository `Settings`.
-2. Open `Secrets and variables`.
-3. Open `Actions`.
-4. Add variable `VITE_GITHUB_CLIENT_ID` with the GitHub Pages OAuth app client ID.
-5. Add variable `VITE_GITHUB_REDIRECT_URI` with `https://mcfuzzysquirrel.github.io/repo-dungeon/`.
-6. Add variable `VITE_GITHUB_TOKEN_EXCHANGE_URL` with the public URL of your deployed token exchange endpoint.
-
-The GitHub Pages deployment workflow reads those variables at build time. The token exchange endpoint itself must be deployed somewhere other than GitHub Pages. The local proxy script in `scripts/github-oauth-proxy.mjs` can be used as the basis for a Node-hosted deployment.
-
-### Important security note
-
-- `VITE_GITHUB_CLIENT_ID` is public and safe to ship in the frontend bundle.
-- Do not put a GitHub client secret in `VITE_*` variables or in the browser build.
-- `GITHUB_CLIENT_SECRET` belongs only on the Electron main process or a server-side/serverless token exchange endpoint.
+See [`docs/optimization-research.md`](docs/optimization-research.md) for the full breakdown of the techniques and how they are wired together.
 
 ## Controls
 
@@ -173,5 +107,4 @@ Release workflows:
 ## Deploy and profiling notes
 
 - Use `VITE_BASE_PATH` (for example `/repo-dungeon/`) for GitHub Pages web builds.
-- Set repository Actions variables `VITE_GITHUB_CLIENT_ID`, `VITE_GITHUB_REDIRECT_URI`, and `VITE_GITHUB_TOKEN_EXCHANGE_URL` if you want the Pages build to generate the correct GitHub authorize URL and call your hosted exchange endpoint.
 - Use `npm run build:web:profile` for sourcemap-enabled production profiling.

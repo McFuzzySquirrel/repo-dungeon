@@ -3,23 +3,16 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { AppShell } from '@/ui/AppShell';
 import { useDungeonStore } from '@/store/dungeonStore';
 import { useSessionStore } from '@/store/sessionStore';
-import type { UseGitHubAuthResult } from '@/ui/hooks/useGitHubAuth';
 
 type CreateGame = typeof import('@/game/createGame').createGame;
-type UseGitHubAuth = typeof import('@/ui/hooks/useGitHubAuth').useGitHubAuth;
 
-const { mockCreateGame, mockUseGitHubAuth } = vi.hoisted(() => ({
+const { mockCreateGame } = vi.hoisted(() => ({
   mockCreateGame: vi.fn(),
-  mockUseGitHubAuth: vi.fn(),
 }));
 
 vi.mock('@/game/createGame', () => ({
   createGame: (...args: Parameters<CreateGame>): ReturnType<CreateGame> =>
     mockCreateGame(...args) as ReturnType<CreateGame>,
-}));
-
-vi.mock('@/ui/hooks/useGitHubAuth', () => ({
-  useGitHubAuth: (): ReturnType<UseGitHubAuth> => mockUseGitHubAuth() as ReturnType<UseGitHubAuth>,
 }));
 
 vi.mock('@/ui/context/GameContext', () => ({
@@ -43,9 +36,9 @@ vi.mock('@/ui/components/GameHudControls', () => ({
 vi.mock('@/ui/components/TouchControls', () => ({ TouchControls: () => <div>TouchControls</div> }));
 vi.mock('@/ui/components/HelpOverlay', () => ({ HelpOverlay: () => <div>HelpOverlay</div> }));
 vi.mock('@/ui/components/WelcomeScreen', () => ({
-  WelcomeScreen: ({ auth, onStart }: { auth: UseGitHubAuthResult; onStart: () => void }) => (
+  WelcomeScreen: ({ onStart }: { onStart: () => void }) => (
     <div>
-      <span>{`welcome:${auth.status}`}</span>
+      <span>welcome</span>
       <button type="button" onClick={onStart}>Start game</button>
     </div>
   ),
@@ -53,27 +46,6 @@ vi.mock('@/ui/components/WelcomeScreen', () => ({
 vi.mock('@/ui/systems/shareUrl', () => ({
   decodeShareableDungeonUrl: () => null,
 }));
-
-function makeAuth(status: UseGitHubAuthResult['status'] = 'authenticated'): UseGitHubAuthResult {
-  return {
-    status,
-    session: null,
-    user: status === 'authenticated'
-      ? {
-          id: 1,
-          login: 'octocat',
-          avatarUrl: 'https://example.com/octocat.png',
-          bio: null,
-          publicRepos: 8,
-          followers: 10,
-          following: 5,
-        }
-      : null,
-    errorMessage: null,
-    beginLogin: vi.fn(async () => {}),
-    logout: vi.fn(async () => {}),
-  };
-}
 
 describe('AppShell', () => {
   beforeEach(() => {
@@ -83,15 +55,14 @@ describe('AppShell', () => {
         getScene: vi.fn(() => null),
       },
     });
-    mockUseGitHubAuth.mockReturnValue(makeAuth());
-    useSessionStore.setState({ usernameInput: '', isAuthenticated: false });
+    useSessionStore.setState({ usernameInput: '' });
     useDungeonStore.setState({ seed: null });
   });
 
-  it('passes restored auth state into welcome and does not render a gameplay GitHub panel after starting', () => {
+  it('shows the welcome screen initially and gameplay UI after starting', () => {
     render(<AppShell />);
 
-    expect(screen.getByText('welcome:authenticated')).toBeInTheDocument();
+    expect(screen.getByText('welcome')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Start game' }));
 

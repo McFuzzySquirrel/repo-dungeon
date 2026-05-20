@@ -8,7 +8,6 @@ export interface RoomLoadResult {
   room: RoomRepositoryRef;
   data: GitHubRoomData | null;
   errorMessage?: string;
-  shouldPromptLogin?: boolean;
 }
 
 export class RoomLoader {
@@ -28,12 +27,12 @@ export class RoomLoader {
     }
 
     try {
-      const data = await this.apiClient.loadRoomData(room);
-      this.roomCache.set(key, data);
+      const result = await this.apiClient.loadRoomData(room);
+      this.roomCache.set(key, result.data);
       return {
         state: 'ready',
         room,
-        data,
+        data: result.data,
       };
     } catch (error) {
       if (error instanceof GitHubApiError) {
@@ -42,7 +41,6 @@ export class RoomLoader {
           room,
           data: null,
           errorMessage: error.details.message,
-          shouldPromptLogin: error.details.shouldPromptLogin,
         };
       }
 
@@ -51,7 +49,6 @@ export class RoomLoader {
         room,
         data: null,
         errorMessage: 'Repository details are currently unavailable.',
-        shouldPromptLogin: false,
       };
     }
   }
