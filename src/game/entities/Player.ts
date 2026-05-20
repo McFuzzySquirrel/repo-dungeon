@@ -27,7 +27,6 @@ export interface PlayerState {
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private currentRoom: DungeonRoomNode | null = null;
   private facingDirection: 'up' | 'down' | 'left' | 'right' = 'down';
-  private playerClass: PlayerClass = 'explorer';
 
   private readonly MOVE_SPEED = 340; // pixels per second
   private readonly PLAYER_RADIUS = 8; // collision radius
@@ -40,7 +39,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
         ? 'sprite-player'
         : 'player-placeholder';
     super(scene, x, y, textureKey);
-      this.playerClass = playerClass;
 
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -60,7 +58,6 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   }
 
   applyClassVisual(playerClass: PlayerClass): void {
-    this.playerClass = playerClass;
     const textureKey = getPlayerClassSprite(playerClass).textureKey;
     if (this.scene.textures.exists(textureKey)) {
       this.setTexture(textureKey);
