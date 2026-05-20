@@ -11,6 +11,7 @@ import { BadgePanel } from '@/ui/components/BadgePanel';
 import { AudioControls } from '@/ui/components/AudioControls';
 import { GamePolishOverlay } from '@/ui/components/GamePolishOverlay';
 import { GameHudControls } from '@/ui/components/GameHudControls';
+import { SelectedCharacterCard } from '@/ui/components/SelectedCharacterCard';
 import { TouchControls } from '@/ui/components/TouchControls';
 import { WelcomeScreen } from '@/ui/components/WelcomeScreen';
 import { HelpOverlay } from '@/ui/components/HelpOverlay';
@@ -108,6 +109,7 @@ export function AppShell() {
             <RateLimitHud />
             <aside className="game-hud-dock" aria-label="Player HUD">
               <XpHud />
+              <SelectedCharacterCard />
               <div className="game-hud-toolbar">
                 <div className="game-hud-actions">
                   <InventoryPanel />

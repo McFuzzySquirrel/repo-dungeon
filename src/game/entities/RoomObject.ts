@@ -12,9 +12,9 @@ export interface RoomObjectInteractionPayload {
 }
 
 const ROOM_OBJECT_ICONS: Record<RoomObjectType, string> = {
-  'readme-scroll': '📜',
-  'file-tree-archive': '🗃',
-  'contributors-gallery': '👥',
+  'readme-scroll': 'sprite-object-readme-scroll',
+  'file-tree-archive': 'sprite-object-file-tree-archive',
+  'contributors-gallery': 'sprite-object-contributors-gallery',
 };
 
 const ROOM_OBJECT_COLORS: Record<RoomObjectType, number> = {
@@ -45,11 +45,9 @@ export class RoomObject extends Phaser.GameObjects.Container {
     base.setStrokeStyle(2, presentation.palette.accent, 0.95);
     const highlight = scene.add.circle(-3, -3, 4, accentColor, 0.7);
 
-    const icon = scene.add.text(0, -1, ROOM_OBJECT_ICONS[blueprint.objectType], {
-      fontFamily: 'monospace',
-      fontSize: '14px',
-    });
-    icon.setOrigin(0.5);
+    const icon = scene.add.image(0, -1, ROOM_OBJECT_ICONS[blueprint.objectType]);
+    icon.setDisplaySize(19, 19);
+    icon.setAlpha(0.96);
 
     const caption = scene.add.text(0, 16, 'Loot', {
       fontFamily: 'monospace',

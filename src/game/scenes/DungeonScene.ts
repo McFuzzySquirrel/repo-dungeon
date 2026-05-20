@@ -29,10 +29,11 @@ const CORRIDOR_HALF_WIDTH = 18;
 const PATHWAY_TILE_SPACING = 24;
 const PATHWAY_WIDTH = CORRIDOR_HALF_WIDTH * 2;
 const PATHWAY_JOINT_SIZE = 42;
-const TILE_SURFACE_FILL_ALPHA = 0.08;
-const TILE_SURFACE_TEXTURE_ALPHA = 0.68;
-const TILE_SURFACE_ZONE_TILE_SCALE = 0.5;
-const TILE_SURFACE_ROOM_TILE_SCALE = 0.75;
+const TILE_SURFACE_FILL_ALPHA = 0.22;
+const ROOM_SURFACE_FILL_ALPHA = 0.94;
+const TILE_SURFACE_TEXTURE_ALPHA = 0.38;
+const TILE_SURFACE_ZONE_TILE_SCALE = 1;
+const USE_BIOME_TILE_TEXTURES = true;
 const CAMERA_BASE_ZOOM_MIN = 0.85;
 const CAMERA_BASE_ZOOM_MAX = 2.4;
 const CAMERA_CORRIDOR_ZOOM_MULTIPLIER = 0.94;
@@ -136,9 +137,7 @@ export class DungeonScene extends Phaser.Scene {
       this.zoneById.set(zone.id, zone);
     }
     this.navigationRegions = this.buildNavigationRegions();
-    this.ensureBiomePlaceholderTextures();
-    this.ensurePathwayPlaceholderTextures();
-    this.ensureEntityPlaceholderTextures();
+
     this.selectedPlayerClass = usePlayerStore.getState().selectedClass ?? 'explorer';
 
     // Set world bounds
@@ -258,17 +257,15 @@ export class DungeonScene extends Phaser.Scene {
     for (const zone of this.dungeon.zones) {
       const color = BIOME_COLORS[zone.biome.id] || 0x3a3a3a;
       const presentation = getBiomePresentation(zone.biome.id);
-      if (this.textures.exists(presentation.tilesetTextureKey)) {
-        this.add
-          .tileSprite(
-              zone.bounds.x + zone.bounds.width / 2,
-              zone.bounds.y + zone.bounds.height / 2,
-            zone.bounds.width,
-            zone.bounds.height,
-            presentation.tilesetTextureKey,
-          )
-          .setTileScale(TILE_SURFACE_ZONE_TILE_SCALE)
-            .setAlpha(TILE_SURFACE_TEXTURE_ALPHA);
+      if (USE_BIOME_TILE_TEXTURES && this.textures.exists(presentation.tilesetTextureKey)) {
+        this.addAlignedTileSurface(
+          zone.bounds.x,
+          zone.bounds.y,
+          zone.bounds.width,
+          zone.bounds.height,
+          presentation.tilesetTextureKey,
+          TILE_SURFACE_ZONE_TILE_SCALE,
+        ).setAlpha(TILE_SURFACE_TEXTURE_ALPHA);
       }
       this.add
         .rectangle(
@@ -285,19 +282,23 @@ export class DungeonScene extends Phaser.Scene {
       // Zone label
       this.add
         .text(zone.bounds.x + 12, zone.bounds.y + 12, zone.label, {
-          color: '#f7edd7',
+          color: '#111111',
           fontFamily: 'monospace',
           fontSize: '12px',
-          backgroundColor: '#0c1018d9',
+          backgroundColor: '#d8c39a',
           padding: {
             x: 8,
-            y: 5,
+            y: 4,
           },
-          stroke: '#000000',
-          strokeThickness: 3,
+          stroke: '#5a4024',
+          strokeThickness: 1,
         })
-        .setOrigin(0);
+        .setOrigin(0)
+        .setDepth(24);
     }
+
+    // Render pathways beneath rooms so room interiors stay visually clean.
+    this.renderPathways();
 
     // Draw rooms
     for (const room of this.dungeon.rooms) {
@@ -305,24 +306,10 @@ export class DungeonScene extends Phaser.Scene {
       const zone = zoneId ? this.zoneById.get(zoneId) : null;
       const color = zone ? BIOME_COLORS[zone.biome.id] : 0x52a9ff;
       const presentation = zone ? getBiomePresentation(zone.biome.id) : null;
-      const textureKey = presentation?.tilesetTextureKey;
-
-      if (textureKey && this.textures.exists(textureKey)) {
-        this.add
-          .tileSprite(
-              room.position.x,
-              room.position.y,
-            room.size.width,
-            room.size.height,
-            textureKey,
-          )
-          .setTileScale(TILE_SURFACE_ROOM_TILE_SCALE)
-            .setAlpha(TILE_SURFACE_TEXTURE_ALPHA);
-      }
 
       // Room rectangle
       const graphics = this.add.graphics();
-      graphics.fillStyle(presentation?.palette.floor ?? color, TILE_SURFACE_FILL_ALPHA);
+      graphics.fillStyle(presentation?.palette.floor ?? color, ROOM_SURFACE_FILL_ALPHA);
       graphics.fillRect(
         room.position.x - room.size.width / 2,
         room.position.y - room.size.height / 2,
@@ -351,12 +338,31 @@ export class DungeonScene extends Phaser.Scene {
         room.position.y - room.size.height / 2,
         room.name,
         presentation?.palette.accent ?? color,
+        room.size.width,
       );
     }
 
-    this.renderPathways();
-
     this.renderDoorways();
+  }
+
+  private addAlignedTileSurface(
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    textureKey: string,
+    tileScale: number,
+  ): Phaser.GameObjects.TileSprite {
+    const left = Math.floor(x);
+    const top = Math.floor(y);
+    const snappedWidth = Math.ceil(width) + 1;
+    const snappedHeight = Math.ceil(height) + 1;
+
+    return this.add
+      .tileSprite(left, top, snappedWidth, snappedHeight, textureKey)
+      .setOrigin(0, 0)
+      .setTilePosition(left, top)
+      .setTileScale(tileScale);
   }
 
   private renderPathways(): void {
@@ -381,7 +387,7 @@ export class DungeonScene extends Phaser.Scene {
       this.renderPathwaySegment(renderPoints[index], renderPoints[index + 1], material.tint, material.alpha);
     }
 
-    for (let index = 0; index < renderPoints.length; index += 1) {
+    for (let index = 1; index < renderPoints.length - 1; index += 1) {
       const previous = renderPoints[index - 1] ?? null;
       const current = renderPoints[index];
       const next = renderPoints[index + 1] ?? null;
@@ -428,10 +434,14 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     const isVertical = from.x === to.x;
+    const endpointInset = Math.min(PATHWAY_JOINT_SIZE * 0.5, Math.max(0, length * 0.45));
+    const startProgress = length <= endpointInset * 2 ? 0.5 : endpointInset / length;
+    const endProgress = length <= endpointInset * 2 ? 0.5 : 1 - endpointInset / length;
     const tileCount = Math.max(1, Math.ceil(length / PATHWAY_TILE_SPACING));
 
     for (let index = 0; index < tileCount; index += 1) {
-      const progress = tileCount === 1 ? 0.5 : index / (tileCount - 1);
+      const localProgress = tileCount === 1 ? 0.5 : index / (tileCount - 1);
+      const progress = Phaser.Math.Linear(startProgress, endProgress, localProgress);
       const x = Phaser.Math.Linear(from.x, to.x, progress);
       const y = Phaser.Math.Linear(from.y, to.y, progress);
 
@@ -934,6 +944,10 @@ export class DungeonScene extends Phaser.Scene {
 
     this.load.image('sprite-player', resolveAssetPath('/assets/sprites/player.svg'));
     this.load.image('sprite-door', resolveAssetPath('/assets/sprites/door.svg'));
+    this.load.image('sprite-signpost', resolveAssetPath('/assets/sprites/signpost.svg'));
+    this.load.image('sprite-object-readme-scroll', resolveAssetPath('/assets/sprites/objects/readme-scroll.svg'));
+    this.load.image('sprite-object-file-tree-archive', resolveAssetPath('/assets/sprites/objects/file-tree-archive.svg'));
+    this.load.image('sprite-object-contributors-gallery', resolveAssetPath('/assets/sprites/objects/contributors-gallery.svg'));
   }
 
   private updateAmbientForBiome(biomeId?: string): void {
@@ -970,125 +984,6 @@ export class DungeonScene extends Phaser.Scene {
     this.sound.setMute(settings.muted);
     this.sound.setVolume(settings.masterVolume);
   };
-
-  private ensureBiomePlaceholderTextures(): void {
-    for (const presentation of getAllBiomePresentations()) {
-      if (this.textures.exists(presentation.tilesetTextureKey)) {
-        continue;
-      }
-      const graphics = this.make.graphics();
-      graphics.fillStyle(presentation.palette.floor, 1);
-      graphics.fillRect(0, 0, 32, 32);
-      graphics.fillStyle(presentation.palette.wall, 0.6);
-      graphics.fillRect(0, 24, 32, 8);
-      graphics.fillStyle(presentation.palette.accent, 0.9);
-      graphics.fillRect(4, 4, 24, 2);
-      graphics.generateTexture(presentation.tilesetTextureKey, 32, 32);
-      graphics.destroy();
-    }
-  }
-
-  private ensurePathwayPlaceholderTextures(): void {
-    for (const sprite of getAllPathwaySprites()) {
-      if (this.textures.exists(sprite.textureKey)) {
-        continue;
-      }
-
-      const graphics = this.make.graphics();
-      graphics.fillStyle(0xffffff, 0.3);
-
-      switch (sprite.id) {
-        case 'straight':
-          graphics.fillRoundedRect(0, 7, 32, 18, 7);
-          break;
-        case 'corner':
-          graphics.lineStyle(18, 0xffffff, 0.3);
-          graphics.beginPath();
-          graphics.moveTo(16, 25);
-          graphics.lineTo(16, 16);
-          graphics.lineTo(25, 16);
-          graphics.strokePath();
-          break;
-        case 'end':
-          graphics.lineStyle(18, 0xffffff, 0.3);
-          graphics.beginPath();
-          graphics.moveTo(16, 16);
-          graphics.lineTo(27, 16);
-          graphics.strokePath();
-          break;
-        case 'tee':
-          graphics.lineStyle(18, 0xffffff, 0.3);
-          graphics.beginPath();
-          graphics.moveTo(7, 16);
-          graphics.lineTo(25, 16);
-          graphics.moveTo(16, 16);
-          graphics.lineTo(16, 25);
-          graphics.strokePath();
-          break;
-        case 'cross':
-          graphics.lineStyle(18, 0xffffff, 0.3);
-          graphics.beginPath();
-          graphics.moveTo(7, 16);
-          graphics.lineTo(25, 16);
-          graphics.moveTo(16, 7);
-          graphics.lineTo(16, 25);
-          graphics.strokePath();
-          break;
-      }
-
-      graphics.generateTexture(sprite.textureKey, sprite.width, sprite.height);
-      graphics.destroy();
-    }
-  }
-
-  private ensureEntityPlaceholderTextures(): void {
-    if (!this.textures.exists('player-placeholder')) {
-      const graphics = this.make.graphics();
-      graphics.fillStyle(0x4a90e2, 1);
-      graphics.fillCircle(8, 8, 7);
-      graphics.lineStyle(2, 0xffffff, 0.8);
-      graphics.strokeCircle(8, 8, 7);
-      graphics.generateTexture('player-placeholder', 16, 16);
-      graphics.destroy();
-    }
-
-    for (const sprite of getAllPlayerClassSprites()) {
-      if (this.textures.exists(sprite.textureKey)) {
-        continue;
-      }
-
-      const graphics = this.make.graphics();
-      graphics.fillStyle(0xcfd8dc, 1);
-      graphics.fillCircle(12, 8, 6);
-      graphics.fillStyle(0x5c6bc0, 1);
-      graphics.fillRect(7, 15, 10, 9);
-      graphics.generateTexture(sprite.textureKey, 24, 24);
-      graphics.destroy();
-    }
-
-    for (const sprite of getAllNpcSprites()) {
-      if (this.textures.exists(sprite.textureKey)) {
-        continue;
-      }
-
-      const graphics = this.make.graphics();
-      graphics.fillStyle(0xffffff, 1);
-      graphics.fillCircle(9, 7, 5);
-      graphics.fillRect(6, 12, 6, 7);
-      graphics.generateTexture(sprite.textureKey, 18, 18);
-      graphics.destroy();
-    }
-
-    if (!this.textures.exists('sprite-door')) {
-      const graphics = this.make.graphics();
-      graphics.fillStyle(0xb58a5a, 1);
-      graphics.fillRect(0, 0, 10, 14);
-      graphics.fillStyle(0x6b4a2e, 1);
-      graphics.fillRect(1, 1, 8, 12);
-      graphics.generateTexture('sprite-door', 10, 14);
-      graphics.destroy();
-    }
-  }
 
   private renderDoorways(): void {
     if (!this.dungeon) {
@@ -1142,11 +1037,24 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private decorateZone(zone: DungeonZone, color: number): void {
-    const markerCount = Math.max(3, Math.floor(zone.roomIds.length / 2));
+    const overlay = this.add.graphics();
+    overlay.fillStyle(color, 0.055);
+    overlay.fillRect(zone.bounds.x + 2, zone.bounds.y + 2, zone.bounds.width - 4, zone.bounds.height - 4);
+
+    overlay.fillStyle(0xffffff, 0.05);
+    for (let y = zone.bounds.y + 20; y < zone.bounds.y + zone.bounds.height - 16; y += 56) {
+      for (let x = zone.bounds.x + 20; x < zone.bounds.x + zone.bounds.width - 16; x += 56) {
+        if (((x + y) / 4) % 3 === 0) {
+          overlay.fillRect(x, y, 3, 3);
+        }
+      }
+    }
+
+    const markerCount = Math.max(2, Math.floor(zone.roomIds.length / 3));
     for (let i = 0; i < markerCount; i += 1) {
       const markerX = zone.bounds.x + 18 + i * 14;
       const markerY = zone.bounds.y + zone.bounds.height - 16;
-      this.add.circle(markerX, markerY, 2, color, 0.5);
+      this.add.circle(markerX, markerY, 2, color, 0.2);
     }
   }
 
@@ -1157,48 +1065,31 @@ export class DungeonScene extends Phaser.Scene {
     cx: number,
     roomTopY: number,
     label: string,
-    accentColor: number,
+    _accentColor: number,
+    roomWidth: number,
   ): void {
-    const displayLabel = label.length > 22 ? `${label.slice(0, 19)}...` : label;
-    const charW = 7.1;
-    const boardPadX = 12;
-    const boardPadY = 6;
-    const boardH = 12 + boardPadY * 2;
-    const boardW = Math.min(Math.max(displayLabel.length * charW + boardPadX * 2, 72), 196);
-    const postH = 18;
-    const postW = 4;
+    const charWidth = 7.1;
+    const maxBoardWidth = Math.max(88, Math.min(180, roomWidth - 12));
+    const maxChars = Math.max(6, Math.floor((maxBoardWidth - 24) / charWidth));
+    const displayLabel = label.length > maxChars ? `${label.slice(0, Math.max(3, maxChars - 3))}...` : label;
+    const boardWidth = Math.min(Math.max(displayLabel.length * charWidth + 24, 88), maxBoardWidth);
+    const signY = roomTopY - 32;
 
-    const boardBottom = roomTopY - postH;
-    const boardTop = boardBottom - boardH;
-    const boardLeft = cx - boardW / 2;
-
-    const g = this.add.graphics();
-    g.setDepth(40);
-
-    g.fillStyle(0x000000, 0.28);
-    g.fillRect(cx - postW / 2 + 2, boardBottom + 2, postW, postH);
-
-    g.fillStyle(accentColor, 0.78);
-    g.fillRect(cx - postW / 2, boardBottom, postW, postH);
-    g.fillRect(boardLeft + 6, boardBottom - 3, boardW - 12, 3);
-
-    g.fillStyle(0x000000, 0.45);
-    g.fillRoundedRect(boardLeft + 3, boardTop + 3, boardW, boardH, 4);
-
-    g.fillStyle(accentColor, 0.95);
-    g.fillRoundedRect(boardLeft - 2, boardTop - 2, boardW + 4, boardH + 4, 5);
-
-    g.fillStyle(0x101722, 0.97);
-    g.fillRoundedRect(boardLeft, boardTop, boardW, boardH, 4);
-
-    g.lineStyle(1, 0xf3e8c8, 0.22);
-    g.strokeRoundedRect(boardLeft + 2, boardTop + 2, boardW - 4, boardH - 4, 3);
+    const minX = cx - roomWidth / 2 + boardWidth / 2 + 4;
+    const maxX = cx + roomWidth / 2 - boardWidth / 2 - 4;
+    const signX = minX <= maxX ? Phaser.Math.Clamp(cx, minX, maxX) : cx;
 
     this.add
-      .text(cx, boardTop + boardH / 2, displayLabel, {
+      .image(signX, signY, 'sprite-signpost')
+      .setDisplaySize(boardWidth + 28, 64)
+      .setDepth(40)
+      .setAlpha(0.95);
+
+    this.add
+      .text(signX, signY - 5, displayLabel, {
         color: '#fff2d6',
         fontFamily: 'monospace',
-        fontSize: '12px',
+        fontSize: '11px',
         fontStyle: 'bold',
         stroke: '#000000',
         strokeThickness: 3,
@@ -1213,7 +1104,7 @@ export class DungeonScene extends Phaser.Scene {
     color: number,
   ): void {
     const graphics = this.add.graphics();
-    graphics.lineStyle(1, color, 0.25);
+    graphics.lineStyle(1, color, 0.12);
     const left = room.position.x - room.size.width / 2 + 6;
     const top = room.position.y - room.size.height / 2 + 6;
     const right = room.position.x + room.size.width / 2 - 6;

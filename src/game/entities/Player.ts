@@ -25,6 +25,9 @@ export interface PlayerState {
  * Handles position, room tracking, and animation state.
  */
 export class Player extends Phaser.Physics.Arcade.Sprite {
+  private static readonly ROOM_DISPLAY_SIZE = 22;
+  private static readonly CORRIDOR_DISPLAY_SIZE = 28;
+
   private currentRoom: DungeonRoomNode | null = null;
   private facingDirection: 'up' | 'down' | 'left' | 'right' = 'down';
 
@@ -37,7 +40,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       ? classTextureKey
       : scene.textures.exists('sprite-player')
         ? 'sprite-player'
-        : 'player-placeholder';
+        : classTextureKey; // Always use SVG, fallback to classTextureKey
     super(scene, x, y, textureKey);
 
     scene.add.existing(this);
@@ -50,11 +53,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     body.setDrag(1);
     body.setMaxSpeed(this.MOVE_SPEED);
 
-    // Create a simple circle representation if no sprite available
-    this.setDisplaySize(22, 22);
-    if (textureKey === 'player-placeholder') {
-      this.setTint(0x4a90e2);
-    }
+    this.syncDisplaySize();
   }
 
   applyClassVisual(playerClass: PlayerClass): void {
@@ -62,20 +61,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.scene.textures.exists(textureKey)) {
       this.setTexture(textureKey);
       this.clearTint();
-      this.setDisplaySize(22, 22);
+      this.syncDisplaySize();
       return;
     }
 
     if (this.scene.textures.exists('sprite-player')) {
       this.setTexture('sprite-player');
       this.clearTint();
-      this.setDisplaySize(22, 22);
+      this.syncDisplaySize();
       return;
     }
 
-    this.setTexture('player-placeholder');
-    this.setTint(0x4a90e2);
-    this.setDisplaySize(22, 22);
+    // No fallback to placeholder: always use SVG class sprite
   }
 
   /**
@@ -83,6 +80,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    */
   setCurrentRoom(room: DungeonRoomNode | null): void {
     this.currentRoom = room;
+    this.syncDisplaySize();
   }
 
   /**
@@ -228,5 +226,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
    */
   isInRegion(minX: number, minY: number, maxX: number, maxY: number): boolean {
     return this.x >= minX && this.x <= maxX && this.y >= minY && this.y <= maxY;
+  }
+
+  private syncDisplaySize(): void {
+    const size = this.currentRoom ? Player.ROOM_DISPLAY_SIZE : Player.CORRIDOR_DISPLAY_SIZE;
+    this.setDisplaySize(size, size);
   }
 }

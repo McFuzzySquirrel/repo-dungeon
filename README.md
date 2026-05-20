@@ -6,6 +6,14 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 
 <img src="docs/screenshots/welcome-page.png" alt="Repo Dungeon welcome screen" width="720" />
 
+## Showcase
+
+<img src="docs/screenshots/gameplay-overview.png" alt="Repo Dungeon exploration view with dungeon map, HUD rail, and minimap" width="720" />
+
+<img src="docs/screenshots/class-select.png" alt="Repo Dungeon class selection modal for choosing an explorer archetype" width="720" />
+
+<img src="docs/screenshots/gameplay-hud-rail.png" alt="Repo Dungeon left-side HUD rail with XP progress and active class card" width="280" />
+
 ## What you can do in-game
 
 - Generate a dungeon from GitHub repositories
@@ -13,7 +21,7 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 - Open repo room details (README, files, contributors, stats)
 - Use minimap/full map overlays while exploring
 - Pick a class and gain XP, loot, and badges
-- Track progression from a left-side HUD rail with a larger XP card, inventory button, badge panel, and help/zoom controls
+- Track progression from a left-side HUD rail with a larger XP card, active class portrait, inventory button, badge panel, and help controls
 - Track progress with visited room stamps and profile stats
 - Repository data is cached locally so revisiting the same user loads instantly
 - A small HUD indicator shows your remaining GitHub API budget for the current hour
