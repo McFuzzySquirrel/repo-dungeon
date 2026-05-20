@@ -6,6 +6,7 @@
   left: 0;
   right: 0;
   bottom: 0;
+  padding: 24px;
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 300;
   display: flex;
@@ -25,15 +26,15 @@
 
 .room-info-panel {
   position: relative;
-  width: 35%;
+  width: min(450px, calc(100vw - 48px));
   max-width: 450px;
-  height: 90vh;
+  height: min(90vh, calc(100vh - 48px));
   background: linear-gradient(135deg, #2a2a3e 0%, #1a1a2e 100%);
-  border-left: 3px solid #d4af37;
-  border-radius: 8px 0 0 8px;
+  border: 3px solid #d4af37;
+  border-radius: 12px;
   display: flex;
   flex-direction: column;
-  box-shadow: -4px 0 16px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.45);
   color: #e0e0e0;
   font-family: 'Press Start 2P', monospace;
   animation: slide-in 0.3s ease-out;
@@ -506,13 +507,17 @@
 
 /* Responsive Design */
 @media (max-width: 768px) {
+  .room-info-panel-overlay {
+    padding: 12px;
+  }
+
   .room-info-panel {
     width: 100%;
     max-width: none;
-    border-radius: 8px 8px 0 0;
-    border-left: none;
-    border-top: 3px solid #d4af37;
-    height: 60vh;
+    border-radius: 12px 12px 0 0;
+    border-left: 3px solid #d4af37;
+    border-bottom: none;
+    height: min(60vh, calc(100vh - 24px));
   }
 
   .room-info-panel-overlay {

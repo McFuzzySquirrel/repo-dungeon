@@ -290,7 +290,7 @@ export function Minimap() {
       <div className="minimap-info">
         <div className="minimap-room-name">{currentRoom.name}</div>
         {currentRoom.zoneId && dungeon?.zones.find((z) => z.id === currentRoom.zoneId) ? (
-          <div className="minimap-biome">
+          <div className="minimap-biome-banner">
             {dungeon.zones.find((z) => z.id === currentRoom.zoneId)?.label}
           </div>
         ) : null}
