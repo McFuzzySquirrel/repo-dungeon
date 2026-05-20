@@ -2,6 +2,7 @@ import { useEffect, useRef, useMemo, useState } from 'react';
 import { useGameScene } from '@/ui/context/GameContext';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import type { DungeonRoomNode, DungeonZone } from '@/game/systems/dungeonTypes';
+import { PLAYER_AVATAR_FALLBACK_SRC, PLAYER_AVATAR_PRIMARY_SRC } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/map.css';
 
 const BIOME_COLORS: Record<string, string> = {
@@ -36,12 +37,39 @@ export function Minimap() {
   const { dungeon, playerState, currentRoom } = useGameScene();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visitedRooms, setVisitedRooms] = useState<Set<string>>(new Set());
+  const [markerSrc, setMarkerSrc] = useState(PLAYER_AVATAR_PRIMARY_SRC);
+  const [markerImage, setMarkerImage] = useState<HTMLImageElement | null>(null);
 
   // Get visited rooms
   useEffect(() => {
     const visited = getVisitedStampsSystem();
     setVisitedRooms(new Set(visited.getVisitedRooms()));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const image = new Image();
+    image.onload = () => {
+      if (!cancelled) {
+        setMarkerImage(image);
+      }
+    };
+    image.onerror = () => {
+      if (cancelled) {
+        return;
+      }
+      if (markerSrc !== PLAYER_AVATAR_FALLBACK_SRC) {
+        setMarkerSrc(PLAYER_AVATAR_FALLBACK_SRC);
+        return;
+      }
+      setMarkerImage(null);
+    };
+    image.src = markerSrc;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [markerSrc]);
 
   // Get biome color for a room
   const getBiomeColor = (room: DungeonRoomNode): string => {
@@ -200,9 +228,15 @@ export function Minimap() {
     const playerX = toCanvasX(playerState.position.x);
     const playerY = toCanvasY(playerState.position.y);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.globalAlpha = 0.9;
-    ctx.fillRect(playerX - 3, playerY - 3, 6, 6);
+    if (markerImage) {
+      const markerSize = 14;
+      ctx.globalAlpha = 0.95;
+      ctx.drawImage(markerImage, playerX - markerSize / 2, playerY - markerSize / 2, markerSize, markerSize);
+    } else {
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = 0.9;
+      ctx.fillRect(playerX - 3, playerY - 3, 6, 6);
+    }
 
     // Draw direction indicator (arrow)
     ctx.fillStyle = '#ffffff';
@@ -229,7 +263,7 @@ export function Minimap() {
     ctx.beginPath();
     ctx.arc(arrowX, arrowY, arrowSize, 0, Math.PI * 2);
     ctx.fill();
-  }, [visibleRooms, playerState, bounds, currentRoom, getBiomeColor, visitedRooms]);
+  }, [visibleRooms, playerState, bounds, currentRoom, getBiomeColor, visitedRooms, markerImage]);
 
   if (!currentRoom) {
     return null;

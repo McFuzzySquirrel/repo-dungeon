@@ -77,9 +77,12 @@
   box-shadow: 0 0 30px var(--class-color, #4a9eff), inset 0 0 20px rgba(74, 158, 255, 0.1);
 }
 
-.char-select-emoji {
-  font-size: 3rem;
+.char-select-avatar {
+  width: 72px;
+  height: 72px;
+  object-fit: contain;
   margin-bottom: 0.5rem;
+  filter: drop-shadow(0 0 10px rgba(74, 158, 255, 0.35));
 }
 
 .char-select-name {

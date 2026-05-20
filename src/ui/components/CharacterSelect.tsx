@@ -6,6 +6,7 @@
 import { useState } from 'react';
 import { CLASSES, type PlayerClass } from '@/game/config/classes';
 import { usePlayerStore } from '@/store/playerStore';
+import { PLAYER_AVATAR_FALLBACK_SRC, PLAYER_AVATAR_PRIMARY_SRC } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/character-select.css';
 
 interface CharacterSelectProps {
@@ -16,6 +17,7 @@ export function CharacterSelect({ onClassSelected }: CharacterSelectProps) {
   const { selectedClass, selectClass } = usePlayerStore();
   const [chosen, setChosen] = useState<PlayerClass | null>(selectedClass);
   const [isConfirmed, setIsConfirmed] = useState(!!selectedClass);
+  const [avatarSrc, setAvatarSrc] = useState(PLAYER_AVATAR_PRIMARY_SRC);
 
   // If already selected, don't show modal
   if (isConfirmed && selectedClass) {
@@ -31,6 +33,11 @@ export function CharacterSelect({ onClassSelected }: CharacterSelectProps) {
     selectClass(chosen);
     setIsConfirmed(true);
     onClassSelected?.(chosen);
+  };
+  const handleAvatarError = () => {
+    if (avatarSrc !== PLAYER_AVATAR_FALLBACK_SRC) {
+      setAvatarSrc(PLAYER_AVATAR_FALLBACK_SRC);
+    }
   };
 
   return (
@@ -54,7 +61,13 @@ export function CharacterSelect({ onClassSelected }: CharacterSelectProps) {
               } as React.CSSProperties}
               aria-pressed={chosen === classConfig.id}
             >
-              <div className="char-select-emoji">{classConfig.emoji}</div>
+              <img
+                className="char-select-avatar"
+                src={avatarSrc}
+                alt=""
+                aria-hidden="true"
+                onError={handleAvatarError}
+              />
               <div className="char-select-name">{classConfig.name}</div>
               <div className="char-select-description">{classConfig.description}</div>
 

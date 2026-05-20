@@ -30,7 +30,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private readonly PLAYER_RADIUS = 8; // collision radius
 
   constructor(scene: Phaser.Scene, x: number, y: number) {
-    const textureKey = scene.textures.exists('sprite-player') ? 'sprite-player' : 'player-placeholder';
+    const textureKey = scene.textures.exists('sprite-player-hero')
+      ? 'sprite-player-hero'
+      : scene.textures.exists('sprite-player')
+        ? 'sprite-player'
+        : 'player-placeholder';
     super(scene, x, y, textureKey);
     scene.add.existing(this);
     scene.physics.add.existing(this);
@@ -201,4 +205,3 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.x >= minX && this.x <= maxX && this.y >= minY && this.y <= maxY;
   }
 }
-

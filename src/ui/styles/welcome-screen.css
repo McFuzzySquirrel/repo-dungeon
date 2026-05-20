@@ -36,7 +36,9 @@
 }
 
 .welcome-icon {
-  font-size: 3.5rem;
+  width: 96px;
+  height: 96px;
+  object-fit: contain;
   filter: drop-shadow(0 0 18px rgba(99, 245, 255, 0.45));
   animation: icon-pulse 3s ease-in-out infinite;
 }

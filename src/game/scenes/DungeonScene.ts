@@ -701,6 +701,7 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.load.image('sprite-player', '/assets/sprites/player.svg');
+    this.load.image('sprite-player-hero', '/assets/sprites/player-hero.png');
     this.load.image('sprite-door', '/assets/sprites/door.svg');
     this.load.image('npc-contributor', '/assets/sprites/npc-contributor.svg');
   }
