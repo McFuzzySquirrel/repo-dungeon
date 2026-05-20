@@ -102,7 +102,8 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
             <h3 className="help-section-title">🔗 GitHub Connection</h3>
             <ul className="help-list">
               <li>Enter a GitHub username to load their public repositories as dungeon rooms.</li>
-              <li><strong>Login with GitHub</strong> to access private repos and get higher API rate limits.</li>
+              <li>Repository data is cached locally — revisiting the same username loads instantly.</li>
+              <li>Use the <strong>🔄 Refresh</strong> button on the welcome screen to re-fetch the latest repos.</li>
               <li>Share your dungeon with the <strong>Copy Share URL</strong> button.</li>
             </ul>
           </section>

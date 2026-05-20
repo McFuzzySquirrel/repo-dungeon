@@ -52,8 +52,6 @@ export interface GitHubRateLimitInfo {
 export interface GitHubApiErrorShape {
   kind: 'rate_limit' | 'not_found' | 'forbidden' | 'network' | 'unknown';
   message: string;
-  isAuthenticated: boolean;
-  shouldPromptLogin: boolean;
   status?: number;
   rateLimit?: GitHubRateLimitInfo;
 }

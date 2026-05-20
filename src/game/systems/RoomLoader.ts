@@ -8,7 +8,6 @@ export interface RoomLoadResult {
   room: RoomRepositoryRef;
   data: GitHubRoomData | null;
   errorMessage?: string;
-  shouldPromptLogin?: boolean;
 }
 
 export class RoomLoader {
@@ -42,7 +41,6 @@ export class RoomLoader {
           room,
           data: null,
           errorMessage: error.details.message,
-          shouldPromptLogin: error.details.shouldPromptLogin,
         };
       }
 
@@ -51,7 +49,6 @@ export class RoomLoader {
         room,
         data: null,
         errorMessage: 'Repository details are currently unavailable.',
-        shouldPromptLogin: false,
       };
     }
   }

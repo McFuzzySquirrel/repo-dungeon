@@ -7,7 +7,6 @@ import type {
   GitHubRepoSummary,
   GitHubRepoTreeEntry,
   GitHubRoomData,
-  GitHubUserSummary,
   RepoPageProgress,
   RoomRepositoryRef,
 } from '@/github/types';
@@ -34,7 +33,6 @@ export class GitHubApiError extends Error {
 }
 
 interface GitHubApiClientOptions {
-  authToken?: string;
   cacheTtlMs?: number;
   requester?: GitHubRequester;
 }
@@ -57,16 +55,6 @@ interface RepoApiModel {
   topics?: string[];
   private: boolean;
   default_branch: string;
-}
-
-interface UserApiModel {
-  id: number;
-  login: string;
-  avatar_url: string;
-  bio: string | null;
-  public_repos: number;
-  followers: number;
-  following: number;
 }
 
 interface ReadmeApiModel {
@@ -93,9 +81,8 @@ interface CacheRecord<T> {
   value: T;
 }
 
-export function createOctokitRequester(authToken?: string): GitHubRequester {
+export function createOctokitRequester(): GitHubRequester {
   const octokit = new Octokit({
-    auth: authToken,
     userAgent: 'repo-dungeon/phase-1',
   });
 
@@ -116,15 +103,13 @@ export function createOctokitRequester(authToken?: string): GitHubRequester {
 }
 
 export class GitHubApiClient {
-  private readonly authToken?: string;
   private readonly requester: GitHubRequester;
   private readonly cacheTtlMs: number;
   private readonly cache = new Map<string, CacheRecord<unknown>>();
   private readonly inFlight = new Map<string, Promise<unknown>>();
 
   constructor(options: GitHubApiClientOptions = {}) {
-    this.authToken = options.authToken;
-    this.requester = options.requester ?? createOctokitRequester(options.authToken);
+    this.requester = options.requester ?? createOctokitRequester();
     this.cacheTtlMs = options.cacheTtlMs ?? DEFAULT_CACHE_TTL_MS;
   }
 
@@ -133,21 +118,8 @@ export class GitHubApiClient {
     this.inFlight.clear();
   }
 
-  async getAuthenticatedUser(): Promise<GitHubUserSummary> {
-    const result = await this.requestWithCache<UserApiModel>('GET /user', {}, true);
-    return normalizeUser(result.data);
-  }
-
   async listPublicRepos(username: string, options: ListRepoOptions = {}): Promise<GitHubRepoSummary[]> {
     return this.listReposPageLoop('GET /users/{username}/repos', { username }, options);
-  }
-
-  async listAuthenticatedRepos(options: ListRepoOptions = {}): Promise<GitHubRepoSummary[]> {
-    return this.listReposPageLoop(
-      'GET /user/repos',
-      { visibility: 'all', affiliation: 'owner,collaborator,organization_member' },
-      options,
-    );
   }
 
   async loadRoomData(roomRef: RoomRepositoryRef): Promise<GitHubRoomData> {
@@ -347,7 +319,7 @@ export class GitHubApiClient {
         return await this.requester<T>(route, parameters);
       } catch (error) {
         lastError = error;
-        const normalized = toGitHubApiError(error, Boolean(this.authToken));
+        const normalized = toGitHubApiError(error);
         const retryable =
           backoffEnabled && (normalized.details.kind === 'rate_limit' || normalized.details.kind === 'network');
 
@@ -360,7 +332,7 @@ export class GitHubApiClient {
       }
     }
 
-    throw toGitHubApiError(lastError, Boolean(this.authToken));
+    throw toGitHubApiError(lastError);
   }
 }
 
@@ -382,18 +354,6 @@ function normalizeRepo(repo: RepoApiModel): GitHubRepoSummary {
     topics: repo.topics ?? [],
     isPrivate: repo.private,
     defaultBranch: repo.default_branch,
-  };
-}
-
-function normalizeUser(user: UserApiModel): GitHubUserSummary {
-  return {
-    id: user.id,
-    login: user.login,
-    avatarUrl: user.avatar_url,
-    bio: user.bio,
-    publicRepos: user.public_repos,
-    followers: user.followers,
-    following: user.following,
   };
 }
 
@@ -437,7 +397,7 @@ function decodeBase64ToText(content: string): string {
   return new TextDecoder().decode(bytes);
 }
 
-function toGitHubApiError(error: unknown, isAuthenticated: boolean): GitHubApiError {
+function toGitHubApiError(error: unknown): GitHubApiError {
   if (error instanceof GitHubApiError) {
     return error;
   }
@@ -459,11 +419,9 @@ function toGitHubApiError(error: unknown, isAuthenticated: boolean): GitHubApiEr
             ? 'network'
             : 'unknown',
     message: isRateLimit
-      ? 'GitHub API rate limit reached. Sign in with GitHub to raise your hourly limit.'
+      ? 'GitHub API rate limit reached. Try again later or use a different network.'
       : message ?? 'Unable to load GitHub data right now.',
     status,
-    shouldPromptLogin: !isAuthenticated && isRateLimit,
-    isAuthenticated,
     rateLimit,
   };
 

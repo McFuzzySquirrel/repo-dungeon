@@ -5,4 +5,6 @@ export const STORAGE_KEYS = {
   player: `${STORAGE_PREFIX}:player`,
   progression: `${STORAGE_PREFIX}:progression`,
   dungeonForUser: (username: string): string => `${STORAGE_PREFIX}:dungeon:${username.toLowerCase()}`,
+  roomDetailForRepo: (owner: string, repo: string): string =>
+    `${STORAGE_PREFIX}:room:${owner.toLowerCase()}:${repo.toLowerCase()}`,
 } as const;

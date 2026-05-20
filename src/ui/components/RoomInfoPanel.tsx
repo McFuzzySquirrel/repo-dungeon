@@ -1,6 +1,11 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { useGameScene, useOnRoomEntered, useOnRoomObjectInteracted } from '@/ui/context/GameContext';
 import { GitHubApiClient, createGitHubApiClient, GitHubApiError } from '@/github/api';
+import {
+  isRoomDetailFresh,
+  loadCachedRoomDetail,
+  saveCachedRoomDetail,
+} from '@/github/cache';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import type { RoomEnteredEvent } from '@/ui/context/GameContext';
 import type { GitHubRoomData } from '@/github/types';
@@ -104,7 +109,7 @@ export function RoomInfoPanel() {
     }, []),
   );
 
-  // Fetch room data from GitHub API
+  // Fetch room data from GitHub API, using persistent cache first
   const fetchRoomData = async (roomId: string, repo: Record<string, string>) => {
     if (!clientRef.current) return;
 
@@ -121,12 +126,22 @@ export function RoomInfoPanel() {
         return;
       }
 
+      // Check persistent cache first
+      const cachedSnapshot = loadCachedRoomDetail(owner, repoName);
+      if (cachedSnapshot && isRoomDetailFresh(cachedSnapshot)) {
+        const data = cachedSnapshot.data;
+        cacheRoomDetails(roomId, data);
+        setState((prev) => ({ ...prev, data, isLoading: false, error: null }));
+        return;
+      }
+
       const data = await clientRef.current.loadRoomData({
         roomId,
         owner,
         repo: repoName,
       });
 
+      saveCachedRoomDetail(owner, repoName, data);
       cacheRoomDetails(roomId, data);
       setState((prev) => ({
         ...prev,

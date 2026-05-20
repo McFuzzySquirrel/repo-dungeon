@@ -77,7 +77,7 @@ describe('GitHubApiClient', () => {
     ]);
   });
 
-  it('returns friendly unauthenticated rate-limit errors', async () => {
+  it('returns rate-limit errors with kind and rateLimit info', async () => {
     vi.useFakeTimers();
     const requesterSpy = vi.fn((_route: string, _parameters?: Record<string, unknown>): Promise<RequestResult<unknown>> =>
       {
@@ -90,7 +90,7 @@ describe('GitHubApiClient', () => {
       requesterSpy(route, parameters) as Promise<RequestResult<never>>;
 
     const client = new GitHubApiClient({ requester });
-    const pending = client.getAuthenticatedUser().catch((error: unknown) => error);
+    const pending = client.listPublicRepos('octocat').catch((error: unknown) => error);
     await vi.runAllTimersAsync();
     const error = await pending;
     if (!(error instanceof GitHubApiError)) {
@@ -98,7 +98,6 @@ describe('GitHubApiClient', () => {
     }
 
     expect(error.details.kind).toBe('rate_limit');
-    expect(error.details.shouldPromptLogin).toBe(true);
     expect(error.details.rateLimit?.remaining).toBe(0);
   });
 });

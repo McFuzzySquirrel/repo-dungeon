@@ -14,7 +14,7 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 - Use minimap/full map overlays while exploring
 - Pick a class and gain XP, loot, and badges
 - Track progress with visited room stamps and profile stats
-- Sign in from the welcome screen to include private repositories and higher GitHub API rate limits
+- Repository data is cached locally so revisiting the same user loads instantly
 
 ## Quick start (play locally)
 
@@ -32,84 +32,11 @@ If you want authenticated GitHub login in the browser during local development, 
 GITHUB_CLIENT_SECRET=your_oauth_app_client_secret npm run auth:proxy
 ```
 
-## GitHub OAuth setup
+## GitHub setup
 
-GitHub login is optional for public repositories, but required if you want private repositories or higher API rate limits.
+No authentication is required. The game loads public repositories by GitHub username.
 
-Important: browser builds need a separate token exchange endpoint after GitHub redirects back with the authorization code. This repo now supports two authenticated paths:
-
-- Electron: the desktop app can exchange the code in the main process when `GITHUB_CLIENT_SECRET` is set at launch time.
-- Web: browser builds can call a separate Node/serverless exchange endpoint via `VITE_GITHUB_TOKEN_EXCHANGE_URL`.
-
-GitHub Pages is still a static host, so it cannot host that exchange endpoint itself. You need to deploy the proxy separately and point the Pages build at it.
-
-### Where to create the OAuth app
-
-GitHub OAuth apps live under your GitHub account settings, not the repository settings.
-
-1. Open `Settings` from your GitHub profile menu.
-2. Open `Developer settings`.
-3. Open `OAuth Apps`.
-4. Click `New OAuth App`.
-
-Direct links:
-
-- `https://github.com/settings/apps`
-- `https://github.com/settings/applications/new`
-
-### Local development setup
-
-Create a local OAuth app with:
-
-- `Homepage URL`: `http://localhost:5173/`
-- `Authorization callback URL`: `http://localhost:5173/`
-
-Then copy `.env.example` to `.env.local` and replace the placeholder client ID:
-
-```bash
-VITE_GITHUB_CLIENT_ID=your_local_oauth_app_client_id
-VITE_GITHUB_REDIRECT_URI=http://localhost:5173/
-VITE_GITHUB_OAUTH_SCOPE=read:user repo
-VITE_GITHUB_TOKEN_EXCHANGE_URL=http://localhost:8787/api/github/oauth/exchange
-```
-
-Restart `npm run dev` after editing `.env.local`.
-
-For local browser login, run the auth proxy in a separate terminal:
-
-```bash
-GITHUB_CLIENT_SECRET=your_local_oauth_app_client_secret npm run auth:proxy
-```
-
-For local Electron login, launch Electron with the same secret available in the environment:
-
-```bash
-GITHUB_CLIENT_SECRET=your_local_oauth_app_client_secret npm run electron
-```
-
-### GitHub Pages setup
-
-Create a separate OAuth app for the deployed site with:
-
-- `Homepage URL`: `https://mcfuzzysquirrel.github.io/repo-dungeon/`
-- `Authorization callback URL`: `https://mcfuzzysquirrel.github.io/repo-dungeon/`
-
-Then add these repository-level GitHub Actions variables:
-
-1. Open repository `Settings`.
-2. Open `Secrets and variables`.
-3. Open `Actions`.
-4. Add variable `VITE_GITHUB_CLIENT_ID` with the GitHub Pages OAuth app client ID.
-5. Add variable `VITE_GITHUB_REDIRECT_URI` with `https://mcfuzzysquirrel.github.io/repo-dungeon/`.
-6. Add variable `VITE_GITHUB_TOKEN_EXCHANGE_URL` with the public URL of your deployed token exchange endpoint.
-
-The GitHub Pages deployment workflow reads those variables at build time. The token exchange endpoint itself must be deployed somewhere other than GitHub Pages. The local proxy script in `scripts/github-oauth-proxy.mjs` can be used as the basis for a Node-hosted deployment.
-
-### Important security note
-
-- `VITE_GITHUB_CLIENT_ID` is public and safe to ship in the frontend bundle.
-- Do not put a GitHub client secret in `VITE_*` variables or in the browser build.
-- `GITHUB_CLIENT_SECRET` belongs only on the Electron main process or a server-side/serverless token exchange endpoint.
+Repository data and room details are cached in your browser's `localStorage` for up to 24 hours (room details for 7 days), so dungeon generation is instant after the first load. Use the **🔄 Refresh** button on the welcome screen to re-fetch the latest data for a username at any time.
 
 ## Controls
 
