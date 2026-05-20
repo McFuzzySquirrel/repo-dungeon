@@ -7,6 +7,7 @@ import { FullMapOverlay } from '@/ui/components/FullMapOverlay';
 import { RoomInfoPanel } from '@/ui/components/RoomInfoPanel';
 import { CharacterSelect } from '@/ui/components/CharacterSelect';
 import { InventoryPanel } from '@/ui/components/InventoryPanel';
+import { BadgePanel } from '@/ui/components/BadgePanel';
 import { AudioControls } from '@/ui/components/AudioControls';
 import { GamePolishOverlay } from '@/ui/components/GamePolishOverlay';
 import { GameHudControls } from '@/ui/components/GameHudControls';
@@ -102,13 +103,20 @@ export function AppShell() {
             <FullMapOverlay />
             <RoomInfoPanel />
             <CharacterSelect />
-            <InventoryPanel />
             <AudioControls />
-            <GamePolishOverlay />
-            <XpHud />
             <TouchControls />
             <RateLimitHud />
-            <GameHudControls onOpenHelp={openHelp} onOpenHome={() => setShowWelcome(true)} />
+            <aside className="game-hud-dock" aria-label="Player HUD">
+              <XpHud />
+              <div className="game-hud-toolbar">
+                <div className="game-hud-actions">
+                  <InventoryPanel />
+                  <BadgePanel />
+                </div>
+                <GameHudControls onOpenHelp={openHelp} onOpenHome={() => setShowWelcome(true)} />
+              </div>
+              <GamePolishOverlay />
+            </aside>
           </>
         )}
         {showWelcome && (

@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { getNpcSpriteForSeed } from '@/game/config/characterSprites';
 import type { DungeonRoomNode } from '@/game/systems/dungeonTypes';
 import {
   buildContributorNPCData,
@@ -36,7 +37,7 @@ export class NPCContributor extends Phaser.Physics.Arcade.Sprite {
     biomeId: string,
     reducedMotion: boolean,
   ) {
-    super(scene, x, y, 'npc-contributor');
+    super(scene, x, y, getNpcSpriteForSeed(contributor.id).textureKey);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -52,7 +53,7 @@ export class NPCContributor extends Phaser.Physics.Arcade.Sprite {
     };
 
     const palette = getBiomePresentation(biomeId).palette;
-    this.setDisplaySize(14, 14);
+    this.setDisplaySize(18, 18);
     this.setTint(palette.accent);
     this.setAlpha(0.9);
     this.pickNextTarget();

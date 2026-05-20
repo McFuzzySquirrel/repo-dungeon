@@ -3,10 +3,14 @@
 ## Current State
 **Phase**: Phase 6 — Desktop & Release hardening (Complete) + Post-completion optimization layer
 **Status**: Complete with post-release UX, mobile, OAuth removal, GitHub REST optimization, and documentation updates  
-**Last Updated**: 2026-05-20T13:53:00Z  
+**Last Updated**: 2026-05-20T22:20:00Z  
 **PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
 
 ## Post-Completion Updates
+- [x] Refined the gameplay HUD into a vertical left-rail layout with a larger XP card, separate inventory and badge buttons, and a dedicated badge details panel.
+  - Files: `src/ui/AppShell.tsx`, `src/ui/components/XpHud.tsx`, `src/ui/components/InventoryPanel.tsx`, `src/ui/components/BadgePanel.tsx`, `src/ui/components/HelpOverlay.tsx`, `src/ui/styles/xp-hud.css`, `src/ui/styles/inventory-panel.css`, `src/ui/styles/badge-panel.css`, `src/ui/styles/game-hud-controls.css`, `src/styles.css`, `tests/app-shell.test.tsx`, `tests/inventory-panel.test.tsx`, `tests/badge-panel.test.tsx`
+- [x] Added sprite-based corridor/pathway presentation, doorway-trimmed corridor endpoints, contextual room zoom, class/NPC SVG variants, and a single-card left/right class picker.
+  - Files: `src/game/scenes/DungeonScene.ts`, `src/game/config/pathwayPresentation.ts`, `src/game/config/characterSprites.ts`, `src/game/entities/Player.ts`, `src/game/entities/NPCContributor.ts`, `src/ui/components/CharacterSelect.tsx`, `src/ui/components/WelcomeScreen.tsx`, `src/ui/components/ProfileRoom.tsx`, `src/ui/components/Minimap.tsx`, `src/ui/components/FullMapOverlay.tsx`, `src/ui/constants/playerAvatar.ts`, `src/ui/styles/character-select.css`, `public/assets/sprites/pathways/*`, `public/assets/sprites/player-*.svg`, `public/assets/sprites/npc-*.svg`, `tests/pathway-presentation.test.ts`, `tests/character-sprites.test.ts`, `tests/character-select.test.tsx`
 - [x] Removed GitHub OAuth flow and migrated to public-repos-only loading with a persistent `localStorage` cache (24 h repo lists / 7 d room details).
   - Files: `src/github/api.ts`, `src/github/cache.ts`, `src/github/types.ts`, `src/ui/hooks/useGitHubData.ts`, `src/ui/components/WelcomeScreen.tsx`
 - [x] Implemented GitHub REST optimization layer (items #1–#5 from `docs/optimization-research.md`):
@@ -76,7 +80,7 @@
 ### ✅ Phase 2: Dungeon Generation (Complete)
 **Built**
 - Deterministic BSP-based dungeon generation with language/topic/misc biome assignment and one-repo-per-room mapping.
-- Phaser scene rendering generated dungeon with room rectangles, corridors, and biome color coding.
+- Phaser scene rendering with generated rooms, doorway-trimmed corridor pathways, biome-aware presentation, and contextual room zoom.
 - Player entity with WASD/arrow key movement, collision detection, and room transition tracking.
 - Event emission for room entry and player movement (accessible to React UI).
 - Minimap HUD (corner-fixed, shows current/adjacent rooms, player position, room label).
@@ -118,11 +122,11 @@
 
 ### ✅ Phase 4: Progression System (Complete)
 **Built**
-- Character class system with selection UI (Explorer, Archivist, Hacker, Contributor) and per-class XP modifiers.
-- Progression tracker with XP awards for room entry, info panel interactions, and GitHub visits.
+- Character class system with selection UI, propagated class-specific avatars, and per-class XP modifiers.
+- Progression tracker with XP awards for room entry, room-object/contributor interactions, badge progression, and GitHub visits.
 - Loot generation system mapped to repo properties (language, stars, topics, contributors, archived/fork/readme flags).
-- Badge tracker with milestone unlock logic and unlock overlays.
-- Inventory panel, level-up overlay, and profile room UI components.
+- Badge tracker with milestone unlock logic, unlock overlays, and a dedicated badge details panel.
+- Inventory panel, level-up overlay, HUD rail, and profile room UI components.
 - Progression state store and hook integration for React overlays.
 
 **Tests/Checks Passed**
@@ -186,6 +190,8 @@
 - None
 
 ## Notes
+- Post-completion HUD rail and badge details panel landed in commit `c526447`.
+- Post-completion pathway sprite, character variant, and class-picker UX polish landed in commit `65abcfe`.
 - Phase 5 polish/content scaffolding completed in commit `6eaa1ef`.
 - Phase 6 release hardening completed in commit `3e4f061`.
 - Post-completion documentation refresh (game-focused README) completed in commit `aea748a`.

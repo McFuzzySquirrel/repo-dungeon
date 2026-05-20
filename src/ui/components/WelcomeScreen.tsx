@@ -1,7 +1,9 @@
-import { useCallback } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useGitHubData } from '@/ui/hooks/useGitHubData';
 import { useSessionStore } from '@/store/sessionStore';
+import { usePlayerStore } from '@/store/playerStore';
 import type { GitHubRepoSummary } from '@/github/types';
+import { PLAYER_AVATAR_FALLBACK_SRC, getPlayerAvatarSrc } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/welcome-screen.css';
 
 interface WelcomeScreenProps {
@@ -27,7 +29,14 @@ function formatCacheAge(fetchedAt: string): string {
 export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreenProps) {
   const usernameInput = useSessionStore((state) => state.usernameInput);
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
+  const selectedClass = usePlayerStore((state) => state.selectedClass);
   const data = useGitHubData();
+  const primaryAvatarSrc = getPlayerAvatarSrc(selectedClass);
+  const [avatarSrc, setAvatarSrc] = useState(primaryAvatarSrc);
+
+  useEffect(() => {
+    setAvatarSrc(primaryAvatarSrc);
+  }, [primaryAvatarSrc]);
 
   const handleLoad = useCallback(async () => {
     try {
@@ -49,12 +58,23 @@ export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreen
 
   const isLoading = data.status === 'loading';
   const hasCachedData = data.status === 'cache-hit' || (data.cacheAge !== null && data.repos.length > 0);
+  const handleAvatarError = () => {
+    if (avatarSrc !== PLAYER_AVATAR_FALLBACK_SRC) {
+      setAvatarSrc(PLAYER_AVATAR_FALLBACK_SRC);
+    }
+  };
 
   return (
     <div className="welcome-overlay" role="main" aria-label="Welcome to Repo Dungeon">
       <div className="welcome-content">
         <div className="welcome-logo-area">
-          <div className="welcome-icon" aria-hidden="true">⚔️</div>
+          <img
+            className="welcome-icon"
+            src={avatarSrc}
+            alt=""
+            aria-hidden="true"
+            onError={handleAvatarError}
+          />
           <h1 className="welcome-title">REPO DUNGEON</h1>
           <p className="welcome-tagline">
             Explore your GitHub universe as a procedurally generated dungeon

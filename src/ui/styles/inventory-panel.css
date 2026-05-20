@@ -1,9 +1,7 @@
 /* Inventory Panel */
 
 .inventory-button {
-  position: fixed;
-  bottom: 20px;
-  left: 20px;
+  position: relative;
   width: 60px;
   height: 60px;
   border-radius: 50%;
@@ -16,8 +14,8 @@
   align-items: center;
   justify-content: center;
   transition: all 0.3s ease;
-  z-index: 100;
   box-shadow: 0 4px 15px rgba(74, 158, 255, 0.3);
+  flex: 0 0 auto;
 }
 
 .inventory-button:hover {
@@ -276,6 +274,50 @@
 
 .inventory-stats strong {
   color: #4a9eff;
+}
+
+.inventory-badges-section {
+  margin-bottom: 1rem;
+  padding: 1rem;
+  border: 1px solid rgba(212, 175, 55, 0.2);
+  border-radius: 8px;
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.inventory-badges-title {
+  margin: 0 0 0.8rem 0;
+  color: #f5df9a;
+  font-size: 1rem;
+}
+
+.inventory-badges-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0.75rem;
+}
+
+.inventory-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 8px;
+  background: rgba(15, 25, 42, 0.65);
+  border: 1px solid rgba(245, 223, 154, 0.18);
+}
+
+.inventory-badge-icon {
+  font-size: 1.2rem;
+}
+
+.inventory-badge-name {
+  color: #fff4c6;
+  font-weight: 600;
+}
+
+.inventory-no-badges {
+  margin: 0;
+  color: #c9d1e6;
 }
 
 .inventory-hint {

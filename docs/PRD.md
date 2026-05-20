@@ -20,6 +20,7 @@
 | 1.0 | 2026-05-19 | @McFuzzySquirrel | Initial PRD |
 | 1.1 | 2026-05-20 | GitHub Copilot | Align documentation with shipped web/Electron OAuth exchange flow, welcome-screen auth UX, and mobile touch controls |
 | 1.2 | 2026-05-20 | GitHub Copilot | **Post-MVP architectural pivot:** removed GitHub OAuth flow entirely; the app now loads public repositories only by GitHub username, with a persistent `localStorage` cache (24 h repo lists / 7 d room details). Added a GitHub REST optimization layer — ETag/`If-None-Match` revalidation (free `304 Not Modified` on unchanged data), repo-summary reuse from the list call, lazy README/contributors fetching tied to tab activation, rate-limit-aware degradation, and an in-HUD `N/60 · resets in Xm` budget counter. See [`docs/optimization-research.md`](./optimization-research.md) for the authoritative description of the current GitHub data flow. Earlier OAuth-flavoured requirements in §5.2, §7, §8.1, §10, §15, §17, and §18 are retained for historical context but **are no longer in effect**. |
+| 1.3 | 2026-05-20 | GitHub Copilot | **Post-MVP UX/presentation refresh:** corridor rendering now uses dedicated pathway sprites trimmed to room entrances, room zoom adapts more aggressively for exploration, player and NPC visuals use class/variant SVG placeholders, the class picker is a one-card left/right carousel, and progression UI now lives in a vertical left-rail HUD with separate inventory and badge buttons. |
 
 ---
 
@@ -102,19 +103,19 @@ Rationale:
 
 | Concern | Detail |
 |---------|--------|
-| Auth | GitHub OAuth App — redirect flow, scopes: `read:user`, `repo` (for private repos) |
-| Rate limits | Unauthenticated: 60 req/hr; Authenticated: 5,000 req/hr |
-| Repo data | REST API: `GET /users/{username}/repos` (public), `GET /user/repos` (authenticated, includes private) |
+| Auth | No authentication in the current shipped flow; public repositories are loaded by username only |
+| Rate limits | Unauthenticated public REST budget: 60 req/hr/IP |
+| Repo data | REST API: `GET /users/{username}/repos` (public) |
 | README | `GET /repos/{owner}/{repo}/readme` — returns base64-encoded content |
 | File tree | `GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1` |
 | Languages | `GET /repos/{owner}/{repo}/languages` |
 | Contributors | `GET /repos/{owner}/{repo}/contributors` |
 | Topics | Included in repo object (`topics` field) |
-| Token storage | Store OAuth tokens in browser storage for web builds or Electron secure storage for desktop; browser builds may use a separate server-side/serverless code-exchange endpoint while Electron exchanges in the main process |
+| Token storage | Not used in the current public-repos-only flow |
 
 ### 5.3 Current Technology Versions (as of May 2026)
 
-| Technology | Recommended Version | Notes |
+        │           ├──▶ [Interact with Room Objects / NPCs] ──▶ [XP / Loot / Badge] │
 |------------|--------------------|----|
 | Phaser.js | 3.87.x | Stable; v4 is in early development, not production-ready |
 | React | 19.x | Stable; concurrent features available |
@@ -198,46 +199,43 @@ From the player's perspective, success means:
 repo-dungeon/
 ├── public/
 │   └── assets/
-│       ├── sprites/        # Character spritesheets, enemies, items
-│       ├── tilesets/       # Dungeon tileset PNGs (per biome)
+│       ├── sprites/        # Player/NPC SVG variants, pathway pieces, props
+│       ├── tilesets/       # Dungeon tileset placeholders / biome art
 │       └── audio/          # SFX + ambient music
 ├── src/
 │   ├── game/               # Phaser game scenes and systems
 │   │   ├── scenes/
 │   │   │   ├── BootScene.ts
-│   │   │   ├── PreloadScene.ts
-│   │   │   ├── MainMenuScene.ts
 │   │   │   ├── DungeonScene.ts       # Core dungeon navigation
-│   │   │   ├── RoomScene.ts          # Individual room exploration
-│   │   │   └── UIScene.ts            # HUD overlay (Phaser scene)
 │   │   ├── systems/
 │   │   │   ├── DungeonGenerator.ts   # BSP + zone generation
 │   │   │   ├── RoomLoader.ts         # Fetches repo data for a room
-│   │   │   ├── PlayerController.ts   # Movement, interaction
-│   │   │   ├── LootSystem.ts         # Reward generation
-│   │   │   └── ProgressTracker.ts    # XP, badges, visited stamps
+│   │   │   ├── LootGenerator.ts      # Reward generation
+│   │   │   ├── ProgressionTracker.ts # XP / level progression
+│   │   │   └── BadgeTracker.ts       # Badge milestones + unlocks
 │   │   ├── entities/
 │   │   │   ├── Player.ts
 │   │   │   ├── RoomObject.ts         # Interactable in-room objects
 │   │   │   └── NPCContributor.ts     # Contributor NPCs
 │   │   └── config/
 │   │       ├── biomes.ts             # Language → biome mapping
-│   │       └── classes.ts            # Player class definitions
+│   │       ├── classes.ts            # Player class definitions
+│   │       ├── pathwayPresentation.ts
+│   │       └── characterSprites.ts
 │   ├── ui/                 # React components (outside canvas)
 │   │   ├── components/
-│   │   │   ├── LoginScreen.tsx
-│   │   │   ├── UsernameInput.tsx
+│   │   │   ├── WelcomeScreen.tsx
 │   │   │   ├── RoomInfoPanel.tsx     # README, stats, file tree
-│   │   │   ├── DungeonMap.tsx        # Minimap / full map overlay
-│   │   │   ├── Inventory.tsx
+│   │   │   ├── Minimap.tsx
+│   │   │   ├── FullMapOverlay.tsx
+│   │   │   ├── InventoryPanel.tsx
+│   │   │   ├── BadgePanel.tsx
 │   │   │   ├── CharacterSelect.tsx
-│   │   │   └── HUD.tsx               # XP bar, badges, level
+│   │   │   └── XpHud.tsx             # XP bar, badges, level
 │   │   └── hooks/
-│   │       ├── useGitHubAuth.ts
 │   │       └── useGitHubData.ts
 │   ├── github/             # GitHub API integration
-│   │   ├── auth.ts          # OAuth flow
-│   │   ├── api.ts           # Octokit wrapper + caching
+│   │   ├── api.ts           # REST wrapper + caching
 │   │   └── types.ts         # Typed repo/user models
 │   ├── store/              # Zustand stores
 │   │   ├── playerStore.ts
@@ -264,7 +262,6 @@ repo-dungeon/
 |----------------|---------|-------|
 | `GitHub REST API v3` | All repo/user data | Via Octokit.js |
 | `GET /users/{user}/repos` | List public repos | Paginated, max 100/page |
-| `GET /user/repos` | List authenticated user's repos (incl. private) | Requires `repo` OAuth scope |
 | `GET /repos/{owner}/{repo}/readme` | Fetch README content | Base64 encoded |
 | `GET /repos/{owner}/{repo}/git/trees/{sha}?recursive=1` | File tree | May be truncated for huge repos |
 | `GET /repos/{owner}/{repo}/languages` | Language byte counts | Used for language bar |
@@ -471,17 +468,17 @@ repo-dungeon/
 
 **1. Title Screen**
 - Game logo, animated pixel art background
-- Username input field + "Enter Dungeon" button
-- "Login with GitHub" button for OAuth
+- Username input field + load/start button for public repositories
+- Sample-dungeon quick-start option
 - Credits / About link
 
 **2. Character Select Screen**
-- Grid of 4 selectable classes with pixel art portraits
-- Class name, stat bars (Exploration, Loot Luck, Read Speed, XP Bonus), flavour text
+- One-card left/right carousel of 4 selectable classes with class portrait
+- Class name, description, bonus, and special ability with explicit previous/next navigation
 
 **3. Dungeon View (main game)**
 - Phaser canvas (full viewport)
-- React HUD overlay: XP bar, level, badge count, minimap, mute button
+- React HUD overlay: left-rail XP/progression card, inventory button, badge button, help/zoom controls, minimap, mute button, and rate-limit indicator
 - On room entry: animated Room Info Panel slides in from the right (React component)
 
 **4. Room Info Panel**
@@ -493,7 +490,6 @@ repo-dungeon/
 - File tree (top-level, expandable)
 - Contributors (avatar row, max 5)
 - "Visit on GitHub →" button
-- "Claim Loot" button (awards XP + items)
 - Dismiss (X) button
 
 **5. Dungeon Map Overlay (M key)**
@@ -503,7 +499,10 @@ repo-dungeon/
 
 **6. Inventory Screen (I key)**
 - Grid of collected loot items with tooltips
-- Badge collection with locked/unlocked state
+
+**7. Badge Panel (B key)**
+- Dedicated badge browser with unlocked and locked states
+- Badge descriptions and completion status
 
 ---
 
@@ -529,7 +528,7 @@ repo-dungeon/
         │           ▼                                   │
         │    [Room Info Panel Open]                     │
         │           │                                   │
-        │           ├──▶ [Claim Loot] ──▶ [XP / Badge] │
+        │           ├──▶ [Interact with Room Objects / NPCs] ──▶ [XP / Loot / Badge] │
         │           └──▶ [Visit GitHub] (new tab)       │
         │                                               │
         ├──▶ [Map Overlay]                              │
@@ -688,16 +687,12 @@ No telemetry is collected in v1. Success is evaluated through:
 
 | Risk | Likelihood | Impact | Mitigation |
 |------|-----------|--------|------------|
-| GitHub API rate limits for unauthenticated use (60/hr) | High | Users can't explore large dungeons | Prompt OAuth login; lazy-load room data; cache aggressively |
 | GitHub API schema changes | Low | Breaking data fetch | Pin Octokit version; add integration tests against mock API |
 | README content contains very long/complex markdown | Medium | Info panel cluttered | Strip markdown to plain text; hard-cap at 500 characters |
 | File tree API truncation (repos with > 100,000 files) | Low | Incomplete file tree in room | Show "Large Repo — tree truncated" note in panel |
 | Pixel art asset creation bottleneck (solo dev) | High | Biomes look incomplete at launch | Use freely licensed pixel art asset packs for v1; replace with custom art in v2 |
 | Electron packaging complexity per platform | Medium | Desktop builds broken on some platforms | Use electron-builder; test on at least macOS + Windows in CI |
-| OAuth redirect doesn't work in Electron | Medium | Desktop private repo access broken | Use Electron protocol handler for OAuth callback |
 | Phaser.js v4 released during development | Low | Migration disruption | Pin to Phaser 3.87.x; defer upgrade to v2 |
-
----
 
 ## 19. Future Considerations
 
@@ -725,7 +720,7 @@ No telemetry is collected in v1. Success is evaluated through:
 | 3 | Should the dungeon layout change between sessions (re-roll)? | No: same username = same layout (deterministic seed) unless user chooses "Re-roll" |
 | 4 | What freely licensed pixel art asset packs are acceptable for v1? | Open Game Art (opengameart.org) CC0/CC-BY assets; documented in credits |
 | 5 | Should audio be included in v1 or deferred? | Include a minimal set: ambient dungeon music + 3 SFX (footstep, room entry, loot collect) |
-| 6 | How is GitHub OAuth code exchange handled securely across Electron and GitHub Pages web builds? | Use Electron main-process exchange for desktop and a separately deployed server-side/serverless exchange endpoint for web; document both paths clearly |
+| 6 | How should future badge unlocks be surfaced without interrupting play too often? | Keep the current popup for unlock moments and the persistent badge panel for detailed review |
 | 7 | Should the shareable URL work for private repos? | No — shared URLs only expose public dungeon layouts; private rooms show as "Secret Chamber" to visitors |
 | 8 | What is the minimum supported screen resolution? | 1024×600 for web; no hard minimum for desktop |
 

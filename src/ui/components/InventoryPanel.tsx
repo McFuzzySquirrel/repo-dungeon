@@ -3,15 +3,20 @@
  */
 
 import { useState, useEffect } from 'react';
+import { BADGES } from '@/game/systems/BadgeTracker';
 import { useProgressionStore } from '@/store/progressionStore';
 import type { LootItem } from '@/game/systems/LootGenerator';
+import type { BadgeId } from '@/game/systems/BadgeTracker';
 import { isTypingInEditableTarget } from '@/ui/systems/keyboard';
 import '@/ui/styles/inventory-panel.css';
 
 type SortBy = 'date' | 'rarity' | 'language';
 
 export function InventoryPanel() {
-  const { inventory } = useProgressionStore();
+  const { inventory, unlockedBadges = [] } = useProgressionStore() as {
+    inventory: LootItem[];
+    unlockedBadges?: BadgeId[];
+  };
   const [isOpen, setIsOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>('date');
 
@@ -153,6 +158,25 @@ export function InventoryPanel() {
             </div>
           </>
         )}
+
+        <div className="inventory-badges-section">
+          <h3 className="inventory-badges-title">Badges</h3>
+          {unlockedBadges.length > 0 ? (
+            <div className="inventory-badges-grid">
+              {unlockedBadges.map((badgeId) => {
+                const badge = BADGES[badgeId];
+                return (
+                  <div key={badgeId} className="inventory-badge" title={badge.description}>
+                    <span className="inventory-badge-icon" aria-hidden="true">{badge.emoji}</span>
+                    <span className="inventory-badge-name">{badge.name}</span>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="inventory-no-badges">No badges unlocked yet.</p>
+          )}
+        </div>
 
         <p className="inventory-hint">Press ESC or click outside to close (or press I)</p>
       </div>

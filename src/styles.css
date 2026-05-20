@@ -62,6 +62,35 @@ textarea:focus-visible {
   pointer-events: none;
 }
 
+.game-hud-dock {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 420;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  width: min(220px, calc(100vw - 32px));
+  pointer-events: none;
+}
+
+.game-hud-dock > * {
+  pointer-events: auto;
+}
+
+.game-hud-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.75rem;
+}
+
+.game-hud-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
 .audio-controls {
   width: min(100vw, 1100px);
   margin: 0 auto 0.5rem;
@@ -88,10 +117,7 @@ textarea:focus-visible {
 }
 
 .polish-overlay {
-  position: absolute;
-  top: 3.25rem;
-  left: 50%;
-  transform: translateX(-50%);
+  position: static;
   display: grid;
   gap: 0.25rem;
   pointer-events: none;
@@ -105,6 +131,18 @@ textarea:focus-visible {
   border-radius: 0.35rem;
   background: rgb(12 18 32 / 88%);
   font-size: 0.8rem;
+}
+
+@media (max-width: 720px) {
+  .game-hud-dock {
+    top: 12px;
+    left: 12px;
+    width: min(240px, calc(100vw - 24px));
+  }
+
+  .game-hud-toolbar {
+    align-items: flex-start;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

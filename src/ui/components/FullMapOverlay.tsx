@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useGameScene } from '@/ui/context/GameContext';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import { isTypingInEditableTarget } from '@/ui/systems/keyboard';
+import { usePlayerStore } from '@/store/playerStore';
+import { PLAYER_AVATAR_FALLBACK_SRC, getPlayerAvatarSrc } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/map.css';
 
 const BIOME_COLORS: Record<string, string> = {
@@ -32,16 +34,49 @@ const BIOME_NAMES: Record<string, string> = {
  */
 export function FullMapOverlay() {
   const { dungeon, playerState, currentRoom } = useGameScene();
+  const selectedClass = usePlayerStore((state) => state.selectedClass);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [visitedRooms, setVisitedRooms] = useState<Set<string>>(new Set());
+  const primaryMarkerSrc = getPlayerAvatarSrc(selectedClass);
+  const [markerSrc, setMarkerSrc] = useState(primaryMarkerSrc);
+  const [markerImage, setMarkerImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    setMarkerSrc(primaryMarkerSrc);
+  }, [primaryMarkerSrc]);
 
   // Get visited rooms
   useEffect(() => {
     const visited = getVisitedStampsSystem();
     setVisitedRooms(new Set(visited.getVisitedRooms()));
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const image = new Image();
+    image.onload = () => {
+      if (!cancelled) {
+        setMarkerImage(image);
+      }
+    };
+    image.onerror = () => {
+      if (cancelled) {
+        return;
+      }
+      if (markerSrc !== PLAYER_AVATAR_FALLBACK_SRC) {
+        setMarkerSrc(PLAYER_AVATAR_FALLBACK_SRC);
+        return;
+      }
+      setMarkerImage(null);
+    };
+    image.src = markerSrc;
+
+    return () => {
+      cancelled = true;
+    };
+  }, [markerSrc]);
 
   // Handle M key to toggle
   useEffect(() => {
@@ -209,12 +244,17 @@ export function FullMapOverlay() {
     const playerX = toCanvasX(playerState.position.x);
     const playerY = toCanvasY(playerState.position.y);
 
-    ctx.fillStyle = '#4a90e2';
     ctx.globalAlpha = 1;
     const playerRadius = Math.max(3, 4 * scale);
-    ctx.beginPath();
-    ctx.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
-    ctx.fill();
+    if (markerImage) {
+      const markerSize = Math.max(14, 16 * scale);
+      ctx.drawImage(markerImage, playerX - markerSize / 2, playerY - markerSize / 2, markerSize, markerSize);
+    } else {
+      ctx.fillStyle = '#4a90e2';
+      ctx.beginPath();
+      ctx.arc(playerX, playerY, playerRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
 
     // Draw direction indicator
     ctx.fillStyle = '#ffffff';
@@ -241,7 +281,7 @@ export function FullMapOverlay() {
     ctx.beginPath();
     ctx.arc(arrowX, arrowY, arrowSize, 0, Math.PI * 2);
     ctx.fill();
-  }, [dungeon, playerState, currentRoom, zoom, visitedRooms]);
+  }, [dungeon, playerState, currentRoom, zoom, visitedRooms, markerImage]);
 
   // Get unique biomes for legend
   const biomesInDungeon = dungeon

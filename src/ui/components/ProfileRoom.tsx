@@ -2,10 +2,12 @@
  * ProfileRoom - Special hub room displaying character stats and progress
  */
 
+import { useEffect, useState } from 'react';
 import { useProgressionStore } from '@/store/progressionStore';
 import { CLASSES } from '@/game/config/classes';
 import { BADGES } from '@/game/systems/BadgeTracker';
 import { getXpForNextLevel } from '@/game/systems/ProgressionTracker';
+import { PLAYER_AVATAR_FALLBACK_SRC, getPlayerAvatarSrc } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/profile-room.css';
 
 interface ProfileRoomProps {
@@ -15,6 +17,12 @@ interface ProfileRoomProps {
 
 export function ProfileRoom({ totalRooms, visitedRooms }: ProfileRoomProps) {
   const { selectedClass, level, xpTowardNextLevel, inventory, unlockedBadges } = useProgressionStore();
+  const primaryAvatarSrc = getPlayerAvatarSrc(selectedClass);
+  const [avatarSrc, setAvatarSrc] = useState(primaryAvatarSrc);
+
+  useEffect(() => {
+    setAvatarSrc(primaryAvatarSrc);
+  }, [primaryAvatarSrc]);
 
   if (!selectedClass) {
     return null;
@@ -38,15 +46,26 @@ export function ProfileRoom({ totalRooms, visitedRooms }: ProfileRoomProps) {
   // Calculate progress (assuming 300 XP to next level on average)
   const maxXpPerLevel = getXpForNextLevel(level);
   const progressPercent = Math.min((xpTowardNextLevel / maxXpPerLevel) * 100, 100);
+  const handleAvatarError = () => {
+    if (avatarSrc !== PLAYER_AVATAR_FALLBACK_SRC) {
+      setAvatarSrc(PLAYER_AVATAR_FALLBACK_SRC);
+    }
+  };
 
   return (
     <div className="profile-room" role="complementary" aria-label="Player profile">
       <div className="profile-room-content">
-        {/* Class and Level Section */}
-        <div className="profile-section profile-class-section">
-          <div className="profile-class-header">
-            <span className="profile-class-emoji">{classConfig.emoji}</span>
-            <div className="profile-class-info">
+          {/* Class and Level Section */}
+          <div className="profile-section profile-class-section">
+            <div className="profile-class-header">
+              <img
+                className="profile-class-avatar"
+                src={avatarSrc}
+                alt=""
+                aria-hidden="true"
+                onError={handleAvatarError}
+              />
+              <div className="profile-class-info">
               <h2 className="profile-class-name">{classConfig.name}</h2>
               <p className="profile-class-desc">{classConfig.description}</p>
             </div>

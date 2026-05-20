@@ -13,6 +13,7 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 - Open repo room details (README, files, contributors, stats)
 - Use minimap/full map overlays while exploring
 - Pick a class and gain XP, loot, and badges
+- Track progression from a left-side HUD rail with a larger XP card, inventory button, badge panel, and help/zoom controls
 - Track progress with visited room stamps and profile stats
 - Repository data is cached locally so revisiting the same user loads instantly
 - A small HUD indicator shows your remaining GitHub API budget for the current hour
@@ -51,6 +52,8 @@ See [`docs/optimization-research.md`](docs/optimization-research.md) for the ful
 - **Move (mobile/touch)**: on-screen D-pad shown during gameplay on touch devices
 - **Interact (mobile/touch)**: on-screen `Interact` button
 - **Full map**: `M`
+- **Badges panel**: `B`
+- **Help overlay**: `H`
 - **Room info / close panels**: `Tab`, `I`, `Esc`
 - **Inventory**: `I` (when progression UI is active)
 
@@ -60,9 +63,10 @@ See [`docs/optimization-research.md`](docs/optimization-research.md) for the ful
 2. Walk into several rooms and confirm room details load.
 3. Open and close the full map (`M`) and confirm player marker updates.
 4. Choose a class and confirm XP/level progress updates while exploring.
-5. Confirm loot and badge unlock overlays appear during exploration.
-6. Click **Visit on GitHub** from room info and confirm it opens the repo.
-7. Reload and verify visited-room progress persists.
+5. Open the badges panel (`B`) and confirm it shows unlocked and locked badge states.
+6. Confirm loot and badge unlock overlays appear during exploration.
+7. Click **Visit on GitHub** from room info and confirm it opens the repo.
+8. Reload and verify visited-room progress persists.
 
 ### Mobile touch verification
 

@@ -1,12 +1,17 @@
 import Phaser from 'phaser';
+import { GAME_DIMENSIONS } from '@/game/config/gameConfig';
+import type { PlayerClass } from '@/game/config/classes';
+import { getAllNpcSprites, getAllPlayerClassSprites } from '@/game/config/characterSprites';
 import { DungeonGenerator } from '@/game/systems/DungeonGenerator';
-import type { DungeonMap, DungeonRoomNode, DungeonZone } from '@/game/systems/dungeonTypes';
+import type { DungeonEdge, DungeonMap, DungeonPoint, DungeonRoomNode, DungeonZone } from '@/game/systems/dungeonTypes';
 import { Player } from '@/game/entities/Player';
 import type { GitHubRepoSummary } from '@/github/types';
 import { getAllBiomePresentations, getBiomePresentation } from '@/game/config/biomePresentation';
+import { getAllPathwaySprites, getPathwayMaterialForBiomes, getPathwaySprite } from '@/game/config/pathwayPresentation';
 import { RoomObject, type RoomObjectInteractionPayload } from '@/game/entities/RoomObject';
 import { NPCContributor, type ContributorInteractionPayload } from '@/game/entities/NPCContributor';
 import { isReducedMotionPreferred, readAudioSettings } from '@/game/audio/audioSettings';
+import { usePlayerStore } from '@/store/playerStore';
 
 const BIOME_COLORS: Record<string, number> = {
   'neon-circuit-city': 0x1e3a5f, // Cyan/purple
@@ -20,14 +25,17 @@ const BIOME_COLORS: Record<string, number> = {
 };
 
 const CORRIDOR_HALF_WIDTH = 18;
+const PATHWAY_TILE_SPACING = 24;
+const PATHWAY_WIDTH = CORRIDOR_HALF_WIDTH * 2;
+const PATHWAY_JOINT_SIZE = 42;
 const TILE_SURFACE_FILL_ALPHA = 0.08;
 const TILE_SURFACE_TEXTURE_ALPHA = 0.68;
 const TILE_SURFACE_ZONE_TILE_SCALE = 0.5;
 const TILE_SURFACE_ROOM_TILE_SCALE = 0.75;
 const CAMERA_BASE_ZOOM_MIN = 0.85;
-const CAMERA_BASE_ZOOM_MAX = 1.8;
-const CAMERA_ROOM_ZOOM_MULTIPLIER = 1.14;
+const CAMERA_BASE_ZOOM_MAX = 2.4;
 const CAMERA_CORRIDOR_ZOOM_MULTIPLIER = 0.94;
+const CAMERA_ROOM_PADDING = 112;
 
 interface NavigationRegion {
   minX: number;
@@ -43,6 +51,8 @@ interface DoorAnchor {
 }
 
 type DirectionKey = 'up' | 'down' | 'left' | 'right';
+
+type PathwayNodeKind = 'end' | 'straight' | 'corner' | 'tee' | 'cross';
 
 type VirtualDirectionState = Record<DirectionKey, boolean>;
 
@@ -86,6 +96,8 @@ export class DungeonScene extends Phaser.Scene {
   private pendingInteractionRequest = false;
   private preferredCameraZoom = 1;
   private cameraZoomTween: Phaser.Tweens.Tween | null = null;
+  private selectedPlayerClass: PlayerClass = 'explorer';
+  private playerClassUnsubscribe: (() => void) | null = null;
   private virtualDirectionState: VirtualDirectionState = {
     up: false,
     down: false,
@@ -124,7 +136,9 @@ export class DungeonScene extends Phaser.Scene {
     }
     this.navigationRegions = this.buildNavigationRegions();
     this.ensureBiomePlaceholderTextures();
+    this.ensurePathwayPlaceholderTextures();
     this.ensureEntityPlaceholderTextures();
+    this.selectedPlayerClass = usePlayerStore.getState().selectedClass ?? 'explorer';
 
     // Set world bounds
     this.physics.world.setBounds(0, 0, this.dungeon.width, this.dungeon.height);
@@ -137,13 +151,25 @@ export class DungeonScene extends Phaser.Scene {
     // Create the player
     const entranceRoom = this.roomById.get(this.dungeon.entranceRoomId);
     if (entranceRoom) {
-      this.player = new Player(this, entranceRoom.position.x, entranceRoom.position.y);
+      this.player = new Player(this, entranceRoom.position.x, entranceRoom.position.y, this.selectedPlayerClass);
       this.player.setCurrentRoom(entranceRoom);
       this.currentRoomId = entranceRoom.id;
 
       // Emit initial room entry event
       this.emitRoomEntryEvent(entranceRoom);
     }
+
+    this.playerClassUnsubscribe?.();
+    this.playerClassUnsubscribe = usePlayerStore.subscribe((state, previousState) => {
+      const nextClass = state.selectedClass ?? 'explorer';
+      const previousClass = previousState.selectedClass ?? 'explorer';
+      if (nextClass === previousClass) {
+        return;
+      }
+
+      this.selectedPlayerClass = nextClass;
+      this.player?.applyClassVisual(nextClass);
+    });
 
     // Set up input
     if (this.input.keyboard) {
@@ -327,22 +353,207 @@ export class DungeonScene extends Phaser.Scene {
       );
     }
 
-    // Draw corridors
-    for (const edge of this.dungeon.edges) {
-      const graphics = this.add.graphics();
-      const lineColor = edge.type === 'corridor' ? 0x7ba3d1 : 0x9f8f6b;
-
-      graphics.lineStyle(3, lineColor, 0.6);
-      if (edge.path.length >= 2) {
-        for (let i = 0; i < edge.path.length - 1; i += 1) {
-          const from = edge.path[i];
-          const to = edge.path[i + 1];
-          graphics.lineBetween(from.x, from.y, to.x, to.y);
-        }
-      }
-    }
+    this.renderPathways();
 
     this.renderDoorways();
+  }
+
+  private renderPathways(): void {
+    if (!this.dungeon) {
+      return;
+    }
+
+    for (const edge of this.dungeon.edges) {
+      this.renderPathwayEdge(edge);
+    }
+  }
+
+  private renderPathwayEdge(edge: DungeonEdge): void {
+    const renderPoints = this.getRenderablePathPoints(edge);
+    if (renderPoints.length < 2) {
+      return;
+    }
+
+    const material = this.getPathwayMaterial(edge);
+
+    for (let index = 0; index < renderPoints.length - 1; index += 1) {
+      this.renderPathwaySegment(renderPoints[index], renderPoints[index + 1], material.tint, material.alpha);
+    }
+
+    for (let index = 0; index < renderPoints.length; index += 1) {
+      const previous = renderPoints[index - 1] ?? null;
+      const current = renderPoints[index];
+      const next = renderPoints[index + 1] ?? null;
+      this.renderPathwayNode(previous, current, next, material.tint, material.alpha);
+    }
+  }
+
+  private getRenderablePathPoints(edge: DungeonEdge): DungeonPoint[] {
+    if (edge.path.length < 2) {
+      return edge.path;
+    }
+
+    const fromRoom = this.roomById.get(edge.fromRoomId);
+    const toRoom = this.roomById.get(edge.toRoomId);
+    if (!fromRoom || !toRoom) {
+      return edge.path;
+    }
+
+    const firstTarget = edge.path[1] ?? toRoom.position;
+    const lastTarget = edge.path[edge.path.length - 2] ?? fromRoom.position;
+    const start = this.toDungeonPoint(this.getDoorAnchor(fromRoom, firstTarget));
+    const end = this.toDungeonPoint(this.getDoorAnchor(toRoom, lastTarget));
+
+    return [start, ...edge.path.slice(1, -1), end];
+  }
+
+  private toDungeonPoint(anchor: DoorAnchor): DungeonPoint {
+    return { x: anchor.x, y: anchor.y };
+  }
+
+  private getPathwayMaterial(edge: DungeonEdge): { tint: number; alpha: number } {
+    const fromRoom = this.roomById.get(edge.fromRoomId);
+    const toRoom = this.roomById.get(edge.toRoomId);
+    const fromBiomeId = fromRoom?.zoneId ? this.zoneById.get(fromRoom.zoneId)?.biome.id : 'lost-archive';
+    const toBiomeId = toRoom?.zoneId ? this.zoneById.get(toRoom.zoneId)?.biome.id : fromBiomeId;
+
+    return getPathwayMaterialForBiomes(fromBiomeId, toBiomeId, edge.type);
+  }
+
+  private renderPathwaySegment(from: DungeonPoint, to: DungeonPoint, tint: number, alpha: number): void {
+    const length = Math.abs(to.x - from.x) + Math.abs(to.y - from.y);
+    if (length <= 0) {
+      return;
+    }
+
+    const isVertical = from.x === to.x;
+    const tileCount = Math.max(1, Math.ceil(length / PATHWAY_TILE_SPACING));
+
+    for (let index = 0; index < tileCount; index += 1) {
+      const progress = tileCount === 1 ? 0.5 : index / (tileCount - 1);
+      const x = Phaser.Math.Linear(from.x, to.x, progress);
+      const y = Phaser.Math.Linear(from.y, to.y, progress);
+
+      this.add
+        .image(x, y, getPathwaySprite('straight').textureKey)
+        .setDisplaySize(PATHWAY_JOINT_SIZE, PATHWAY_WIDTH)
+        .setRotation(isVertical ? Math.PI / 2 : 0)
+        .setTint(tint)
+        .setAlpha(alpha);
+    }
+  }
+
+  private renderPathwayNode(
+    previous: DungeonPoint | null,
+    current: DungeonPoint,
+    next: DungeonPoint | null,
+    tint: number,
+    alpha: number,
+  ): void {
+    const directions = [previous, next]
+      .filter((point): point is DungeonPoint => point !== null)
+      .map((point) => this.getPathDirection(current, point));
+
+    if (directions.length === 0) {
+      return;
+    }
+
+    const kind = this.getPathwayNodeKind(directions);
+    const textureKey = getPathwaySprite(kind).textureKey;
+    const rotation = this.getPathwayNodeRotation(kind, directions);
+
+    this.add
+      .image(current.x, current.y, textureKey)
+      .setDisplaySize(PATHWAY_JOINT_SIZE, PATHWAY_JOINT_SIZE)
+      .setRotation(rotation)
+      .setTint(tint)
+      .setAlpha(alpha);
+  }
+
+  private getPathDirection(from: DungeonPoint, to: DungeonPoint): DirectionKey {
+    if (to.x > from.x) {
+      return 'right';
+    }
+    if (to.x < from.x) {
+      return 'left';
+    }
+    if (to.y > from.y) {
+      return 'down';
+    }
+    return 'up';
+  }
+
+  private getPathwayNodeKind(directions: DirectionKey[]): PathwayNodeKind {
+    const uniqueDirections = [...new Set(directions)];
+    if (uniqueDirections.length >= 4) {
+      return 'cross';
+    }
+    if (uniqueDirections.length === 3) {
+      return 'tee';
+    }
+    if (uniqueDirections.length === 1) {
+      return 'end';
+    }
+
+    const hasHorizontal = uniqueDirections.includes('left') || uniqueDirections.includes('right');
+    const hasVertical = uniqueDirections.includes('up') || uniqueDirections.includes('down');
+    return hasHorizontal && hasVertical ? 'corner' : 'straight';
+  }
+
+  private getPathwayNodeRotation(kind: PathwayNodeKind, directions: DirectionKey[]): number {
+    const uniqueDirections = [...new Set(directions)];
+
+    if (kind === 'straight') {
+      return uniqueDirections.includes('up') || uniqueDirections.includes('down') ? Math.PI / 2 : 0;
+    }
+
+    if (kind === 'end') {
+      return this.rotationForDirection(uniqueDirections[0]);
+    }
+
+    if (kind === 'corner') {
+      const set = new Set(uniqueDirections);
+      if (set.has('right') && set.has('down')) {
+        return 0;
+      }
+      if (set.has('down') && set.has('left')) {
+        return Math.PI / 2;
+      }
+      if (set.has('left') && set.has('up')) {
+        return Math.PI;
+      }
+      return (Math.PI * 3) / 2;
+    }
+
+    if (kind === 'tee') {
+      const set = new Set(uniqueDirections);
+      if (!set.has('up')) {
+        return 0;
+      }
+      if (!set.has('left')) {
+        return Math.PI / 2;
+      }
+      if (!set.has('down')) {
+        return Math.PI;
+      }
+      return (Math.PI * 3) / 2;
+    }
+
+    return 0;
+  }
+
+  private rotationForDirection(direction: DirectionKey): number {
+    switch (direction) {
+      case 'right':
+        return 0;
+      case 'down':
+        return Math.PI / 2;
+      case 'left':
+        return Math.PI;
+      case 'up':
+      default:
+        return (Math.PI * 3) / 2;
+    }
   }
 
   /**
@@ -649,12 +860,7 @@ export class DungeonScene extends Phaser.Scene {
 
   private applyContextualCameraZoom(immediate = false): void {
     const camera = this.cameras.main;
-    const zoomMultiplier = this.currentRoomId ? CAMERA_ROOM_ZOOM_MULTIPLIER : CAMERA_CORRIDOR_ZOOM_MULTIPLIER;
-    const targetZoom = Phaser.Math.Clamp(
-      this.preferredCameraZoom * zoomMultiplier,
-      CAMERA_BASE_ZOOM_MIN,
-      CAMERA_BASE_ZOOM_MAX,
-    );
+    const targetZoom = Phaser.Math.Clamp(this.resolveContextualZoom(), CAMERA_BASE_ZOOM_MIN, CAMERA_BASE_ZOOM_MAX);
 
     this.cameraZoomTween?.stop();
     this.cameraZoomTween = null;
@@ -673,6 +879,19 @@ export class DungeonScene extends Phaser.Scene {
         this.cameraZoomTween = null;
       },
     });
+  }
+
+  private resolveContextualZoom(): number {
+    const currentRoom = this.currentRoomId ? this.roomById.get(this.currentRoomId) ?? null : null;
+    if (!currentRoom) {
+      return this.preferredCameraZoom * CAMERA_CORRIDOR_ZOOM_MULTIPLIER;
+    }
+
+    const availableWidth = Math.max(240, GAME_DIMENSIONS.width - CAMERA_ROOM_PADDING * 2);
+    const availableHeight = Math.max(180, GAME_DIMENSIONS.height - CAMERA_ROOM_PADDING * 2);
+    const fitZoom = Math.min(availableWidth / currentRoom.size.width, availableHeight / currentRoom.size.height);
+
+    return fitZoom * this.preferredCameraZoom;
   }
 
   private isDirectionActive(direction: DirectionKey): boolean {
@@ -700,9 +919,20 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
 
+    for (const sprite of getAllPathwaySprites()) {
+      this.load.image(sprite.textureKey, sprite.assetPath);
+    }
+
+    for (const sprite of getAllPlayerClassSprites()) {
+      this.load.image(sprite.textureKey, sprite.assetPath);
+    }
+
+    for (const sprite of getAllNpcSprites()) {
+      this.load.image(sprite.textureKey, sprite.assetPath);
+    }
+
     this.load.image('sprite-player', '/assets/sprites/player.svg');
     this.load.image('sprite-door', '/assets/sprites/door.svg');
-    this.load.image('npc-contributor', '/assets/sprites/npc-contributor.svg');
   }
 
   private updateAmbientForBiome(biomeId?: string): void {
@@ -757,6 +987,59 @@ export class DungeonScene extends Phaser.Scene {
     }
   }
 
+  private ensurePathwayPlaceholderTextures(): void {
+    for (const sprite of getAllPathwaySprites()) {
+      if (this.textures.exists(sprite.textureKey)) {
+        continue;
+      }
+
+      const graphics = this.make.graphics();
+      graphics.fillStyle(0xffffff, 0.3);
+
+      switch (sprite.id) {
+        case 'straight':
+          graphics.fillRoundedRect(0, 7, 32, 18, 7);
+          break;
+        case 'corner':
+          graphics.lineStyle(18, 0xffffff, 0.3);
+          graphics.beginPath();
+          graphics.moveTo(16, 25);
+          graphics.lineTo(16, 16);
+          graphics.lineTo(25, 16);
+          graphics.strokePath();
+          break;
+        case 'end':
+          graphics.lineStyle(18, 0xffffff, 0.3);
+          graphics.beginPath();
+          graphics.moveTo(16, 16);
+          graphics.lineTo(27, 16);
+          graphics.strokePath();
+          break;
+        case 'tee':
+          graphics.lineStyle(18, 0xffffff, 0.3);
+          graphics.beginPath();
+          graphics.moveTo(7, 16);
+          graphics.lineTo(25, 16);
+          graphics.moveTo(16, 16);
+          graphics.lineTo(16, 25);
+          graphics.strokePath();
+          break;
+        case 'cross':
+          graphics.lineStyle(18, 0xffffff, 0.3);
+          graphics.beginPath();
+          graphics.moveTo(7, 16);
+          graphics.lineTo(25, 16);
+          graphics.moveTo(16, 7);
+          graphics.lineTo(16, 25);
+          graphics.strokePath();
+          break;
+      }
+
+      graphics.generateTexture(sprite.textureKey, sprite.width, sprite.height);
+      graphics.destroy();
+    }
+  }
+
   private ensureEntityPlaceholderTextures(): void {
     if (!this.textures.exists('player-placeholder')) {
       const graphics = this.make.graphics();
@@ -768,11 +1051,30 @@ export class DungeonScene extends Phaser.Scene {
       graphics.destroy();
     }
 
-    if (!this.textures.exists('npc-contributor')) {
+    for (const sprite of getAllPlayerClassSprites()) {
+      if (this.textures.exists(sprite.textureKey)) {
+        continue;
+      }
+
+      const graphics = this.make.graphics();
+      graphics.fillStyle(0xcfd8dc, 1);
+      graphics.fillCircle(12, 8, 6);
+      graphics.fillStyle(0x5c6bc0, 1);
+      graphics.fillRect(7, 15, 10, 9);
+      graphics.generateTexture(sprite.textureKey, 24, 24);
+      graphics.destroy();
+    }
+
+    for (const sprite of getAllNpcSprites()) {
+      if (this.textures.exists(sprite.textureKey)) {
+        continue;
+      }
+
       const graphics = this.make.graphics();
       graphics.fillStyle(0xffffff, 1);
-      graphics.fillCircle(7, 7, 7);
-      graphics.generateTexture('npc-contributor', 14, 14);
+      graphics.fillCircle(9, 7, 5);
+      graphics.fillRect(6, 12, 6, 7);
+      graphics.generateTexture(sprite.textureKey, 18, 18);
       graphics.destroy();
     }
 
@@ -991,6 +1293,8 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private readonly handleSceneShutdown = (): void => {
+    this.playerClassUnsubscribe?.();
+    this.playerClassUnsubscribe = null;
     this.clearVirtualDirections();
     this.pendingInteractionRequest = false;
     this.cameraZoomTween?.stop();
