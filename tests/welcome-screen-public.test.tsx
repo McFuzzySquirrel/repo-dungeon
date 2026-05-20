@@ -22,7 +22,7 @@ function makeData(overrides: Partial<UseGitHubDataResult> = {}): UseGitHubDataRe
     errorMessage: null,
     progress: null,
     cacheAge: null,
-    fetchRepos: vi.fn(async () => []),
+    fetchRepos: vi.fn(() => Promise.resolve([])),
     ...overrides,
   };
 }
@@ -109,7 +109,7 @@ describe('WelcomeScreen public-only UX', () => {
   });
 
   it('calls fetchRepos with forceRefresh when Refresh button is clicked', () => {
-    const fetchRepos = vi.fn(async () => []);
+    const fetchRepos = vi.fn(() => Promise.resolve([]));
     mockUseGitHubData.mockReturnValue(
       makeData({
         status: 'cache-hit',

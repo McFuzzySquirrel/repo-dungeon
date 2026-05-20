@@ -10,6 +10,7 @@ import {
   touchCachedRepoListFreshness,
   touchCachedRoomDetailFreshness,
 } from '@/github/cache';
+import type { RoomDetailSnapshot } from '@/github/cache';
 import type { GitHubRepoSummary, GitHubRoomData } from '@/github/types';
 
 function makeRepo(index: number): GitHubRepoSummary {
@@ -29,9 +30,9 @@ function makeRepo(index: number): GitHubRepoSummary {
   };
 }
 
-function makeRoomData(_repoName: string): GitHubRoomData {
+function makeRoomData(): GitHubRoomData {
   return {
-    repo: makeRepo(1) as unknown as GitHubRoomData['repo'],
+    repo: makeRepo(1),
     readme: { plainText: '# Hello', truncated: false },
     languages: { TypeScript: 100 },
     topLevelTree: [{ path: 'src', type: 'tree' }],
@@ -151,7 +152,7 @@ describe('GitHub persistent cache — room details', () => {
   });
 
   it('saves and reloads room detail', () => {
-    const data = makeRoomData('repo-1');
+    const data = makeRoomData();
     saveCachedRoomDetail('octocat', 'repo-1', data);
     const snapshot = loadCachedRoomDetail('octocat', 'repo-1');
     expect(snapshot).not.toBeNull();
@@ -159,7 +160,7 @@ describe('GitHub persistent cache — room details', () => {
   });
 
   it('marks a just-saved snapshot as fresh', () => {
-    saveCachedRoomDetail('octocat', 'repo-1', makeRoomData('repo-1'));
+    saveCachedRoomDetail('octocat', 'repo-1', makeRoomData());
     const snapshot = loadCachedRoomDetail('octocat', 'repo-1')!;
     expect(isRoomDetailFresh(snapshot)).toBe(true);
   });
@@ -172,7 +173,7 @@ describe('GitHub persistent cache — room details', () => {
         schemaVersion: 1,
         repoFullName: 'octocat/repo-1',
         fetchedAt: eightDaysAgo,
-        data: makeRoomData('repo-1'),
+        data: makeRoomData(),
       }),
     );
     const snapshot = loadCachedRoomDetail('octocat', 'repo-1')!;
@@ -180,7 +181,7 @@ describe('GitHub persistent cache — room details', () => {
   });
 
   it('normalises owner and repo to lower case', () => {
-    saveCachedRoomDetail('OctoCAT', 'My-Repo', makeRoomData('My-Repo'));
+    saveCachedRoomDetail('OctoCAT', 'My-Repo', makeRoomData());
     expect(loadCachedRoomDetail('octocat', 'my-repo')).not.toBeNull();
   });
 
@@ -193,7 +194,7 @@ describe('GitHub persistent cache — room details', () => {
   });
 
   it('persists per-endpoint etags when supplied (item #1)', () => {
-    saveCachedRoomDetail('octocat', 'repo-1', makeRoomData('repo-1'), {
+    saveCachedRoomDetail('octocat', 'repo-1', makeRoomData(), {
       readme: '"readme-etag"',
       contributors: '"contrib-etag"',
     });
@@ -203,9 +204,9 @@ describe('GitHub persistent cache — room details', () => {
   });
 
   it('touchCachedRoomDetailFreshness refreshes timestamp without losing etags', () => {
-    saveCachedRoomDetail('octocat', 'repo-1', makeRoomData('repo-1'), { readme: '"r"' });
+    saveCachedRoomDetail('octocat', 'repo-1', makeRoomData(), { readme: '"r"' });
     // Backdate the snapshot.
-    const raw = JSON.parse(localStorage.getItem('repo-dungeon:v1:room:octocat:repo-1') as string);
+    const raw = JSON.parse(localStorage.getItem('repo-dungeon:v1:room:octocat:repo-1') as string) as RoomDetailSnapshot;
     raw.fetchedAt = new Date(Date.now() - 8 * 24 * 60 * 60 * 1_000).toISOString();
     localStorage.setItem('repo-dungeon:v1:room:octocat:repo-1', JSON.stringify(raw));
 
