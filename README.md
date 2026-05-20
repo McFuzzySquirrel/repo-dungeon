@@ -15,28 +15,35 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 - Pick a class and gain XP, loot, and badges
 - Track progress with visited room stamps and profile stats
 - Repository data is cached locally so revisiting the same user loads instantly
+- A small HUD indicator shows your remaining GitHub API budget for the current hour
 
 ## Quick start (play locally)
 
 ```bash
 npm install
-cp .env.example .env.local
 npm run dev
 ```
 
-Open the local URL shown by Vite in your terminal.
+Open the local URL shown by Vite in your terminal. No environment configuration is required for the public-repos-only experience.
 
-If you want authenticated GitHub login in the browser during local development, you also need a local token exchange proxy:
-
-```bash
-GITHUB_CLIENT_SECRET=your_oauth_app_client_secret npm run auth:proxy
-```
+> **Note:** `.env.example` still contains some `VITE_GITHUB_*` variables and an `auth:proxy` script remains in `package.json`. These are vestigial from the original OAuth flow (since removed — the app now loads public repositories only) and are not consumed by the runtime. They can be safely ignored.
 
 ## GitHub setup
 
 No authentication is required. The game loads public repositories by GitHub username.
 
-Repository data and room details are cached in your browser's `localStorage` for up to 24 hours (room details for 7 days), so dungeon generation is instant after the first load. Use the **🔄 Refresh** button on the welcome screen to re-fetch the latest data for a username at any time.
+Repository data and room details are cached in your browser's `localStorage` for up to 24 hours (room details for 7 days), keyed by username. Use the **🔄 Refresh** button on the welcome screen to re-fetch the latest data for a username at any time.
+
+### Rate-limit handling & free revalidation
+
+Public, unauthenticated GitHub REST has a budget of **60 requests / hour / IP**. Repo Dungeon stays well inside that budget through:
+
+- **Persistent cache** — repo lists and room details are kept in `localStorage` for 24 h / 7 d respectively.
+- **ETag-driven revalidation** — every persisted entry remembers the response `ETag`. After TTL expiry the app re-issues the request with `If-None-Match`; GitHub replies `304 Not Modified` for unchanged data, **which does not count against the rate limit**. Returning visits to the same dungeon cost ~0 quota.
+- **Lazy README & contributors** — opening a room costs ~2 calls instead of 5; the README and contributors panels only fetch when their tab is opened, and the result is merged back into the persisted snapshot.
+- **In-HUD budget counter** — a small `API N/60 · resets in Xm` indicator in the top-right of the game view shows your remaining quota, lights up amber below 15 / red below 5, and flashes a `✓ cached` pip whenever a request was satisfied by a free 304. If the budget is exhausted, the panel falls back to stale cached data instead of failing.
+
+See [`docs/optimization-research.md`](docs/optimization-research.md) for the full breakdown of the techniques and how they are wired together.
 
 ## Controls
 
@@ -100,5 +107,4 @@ Release workflows:
 ## Deploy and profiling notes
 
 - Use `VITE_BASE_PATH` (for example `/repo-dungeon/`) for GitHub Pages web builds.
-- Set repository Actions variables `VITE_GITHUB_CLIENT_ID`, `VITE_GITHUB_REDIRECT_URI`, and `VITE_GITHUB_TOKEN_EXCHANGE_URL` if you want the Pages build to generate the correct GitHub authorize URL and call your hosted exchange endpoint.
 - Use `npm run build:web:profile` for sourcemap-enabled production profiling.
