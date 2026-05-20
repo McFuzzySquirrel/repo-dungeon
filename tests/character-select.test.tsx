@@ -21,23 +21,24 @@ describe('CharacterSelect', () => {
     expect(screen.getByText('Choose Your Class')).toBeInTheDocument();
   });
 
-  it('should display all 4 character classes', () => {
+  it('should display one class at a time', () => {
     render(<CharacterSelect />);
     expect(screen.getByText('Explorer')).toBeInTheDocument();
-    expect(screen.getByText('Archivist')).toBeInTheDocument();
-    expect(screen.getByText('Hacker')).toBeInTheDocument();
-    expect(screen.getByText('Contributor')).toBeInTheDocument();
+    expect(screen.queryByText('Archivist')).not.toBeInTheDocument();
+    expect(screen.queryByText('Hacker')).not.toBeInTheDocument();
+    expect(screen.queryByText('Contributor')).not.toBeInTheDocument();
   });
 
-  it('should display class descriptions', () => {
+  it('should scroll to the next class', () => {
     render(<CharacterSelect />);
-    expect(screen.getByText(/Balanced adventurer/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /show next class/i }));
+    expect(screen.getByText('Archivist')).toBeInTheDocument();
     expect(screen.getByText(/Knowledge seeker/)).toBeInTheDocument();
   });
 
   it('should allow class selection', () => {
     render(<CharacterSelect />);
-    const explorerCard = screen.getByRole('button', { name: /Explorer/ });
+    const explorerCard = screen.getByRole('button', { name: /Choose Explorer class/i });
     fireEvent.click(explorerCard);
     expect(explorerCard).toHaveAttribute('aria-pressed', 'true');
   });
@@ -54,7 +55,7 @@ describe('CharacterSelect', () => {
 
   it('should enable confirm button when a class is selected', () => {
     render(<CharacterSelect />);
-    const explorerCard = screen.getByRole('button', { name: /Explorer/ });
+    const explorerCard = screen.getByRole('button', { name: /Choose Explorer class/i });
     fireEvent.click(explorerCard);
     // The confirm button text might be wrapped, so use a more flexible query
     const buttons = screen.getAllByRole('button');
@@ -73,12 +74,9 @@ describe('CharacterSelect', () => {
 
   it('should be keyboard accessible', () => {
     render(<CharacterSelect />);
-    const cards = screen.getAllByRole('button').filter((btn) =>
-      ['Explorer', 'Archivist', 'Hacker', 'Contributor'].some((name) =>
-        btn.textContent?.includes(name),
-      ),
-    );
-    expect(cards.length).toBe(4);
+    expect(screen.getByRole('button', { name: /show previous class/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /show next class/i })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Choose Explorer class/i })).toBeInTheDocument();
   });
 
   it('should have proper ARIA labels', () => {

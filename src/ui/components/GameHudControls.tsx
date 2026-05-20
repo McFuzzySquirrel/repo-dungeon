@@ -12,7 +12,7 @@ interface ZoomableScene {
 }
 
 const MIN_ZOOM = 0.85;
-const MAX_ZOOM = 1.8;
+const MAX_ZOOM = 2.4;
 const STEP = 0.15;
 
 export function GameHudControls({ onOpenHelp, onOpenHome }: GameHudControlsProps) {

@@ -2,12 +2,12 @@
  * ProfileRoom - Special hub room displaying character stats and progress
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useProgressionStore } from '@/store/progressionStore';
 import { CLASSES } from '@/game/config/classes';
 import { BADGES } from '@/game/systems/BadgeTracker';
 import { getXpForNextLevel } from '@/game/systems/ProgressionTracker';
-import { PLAYER_AVATAR_FALLBACK_SRC, PLAYER_AVATAR_PRIMARY_SRC } from '@/ui/constants/playerAvatar';
+import { PLAYER_AVATAR_FALLBACK_SRC, getPlayerAvatarSrc } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/profile-room.css';
 
 interface ProfileRoomProps {
@@ -17,7 +17,12 @@ interface ProfileRoomProps {
 
 export function ProfileRoom({ totalRooms, visitedRooms }: ProfileRoomProps) {
   const { selectedClass, level, xpTowardNextLevel, inventory, unlockedBadges } = useProgressionStore();
-  const [avatarSrc, setAvatarSrc] = useState(PLAYER_AVATAR_PRIMARY_SRC);
+  const primaryAvatarSrc = getPlayerAvatarSrc(selectedClass);
+  const [avatarSrc, setAvatarSrc] = useState(primaryAvatarSrc);
+
+  useEffect(() => {
+    setAvatarSrc(primaryAvatarSrc);
+  }, [primaryAvatarSrc]);
 
   if (!selectedClass) {
     return null;

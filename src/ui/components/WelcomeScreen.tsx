@@ -1,8 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useGitHubData } from '@/ui/hooks/useGitHubData';
 import { useSessionStore } from '@/store/sessionStore';
+import { usePlayerStore } from '@/store/playerStore';
 import type { GitHubRepoSummary } from '@/github/types';
-import { PLAYER_AVATAR_FALLBACK_SRC, PLAYER_AVATAR_PRIMARY_SRC } from '@/ui/constants/playerAvatar';
+import { PLAYER_AVATAR_FALLBACK_SRC, getPlayerAvatarSrc } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/welcome-screen.css';
 
 interface WelcomeScreenProps {
@@ -28,8 +29,14 @@ function formatCacheAge(fetchedAt: string): string {
 export function WelcomeScreen({ onStart, onLoadAndStart, onHelp }: WelcomeScreenProps) {
   const usernameInput = useSessionStore((state) => state.usernameInput);
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
+  const selectedClass = usePlayerStore((state) => state.selectedClass);
   const data = useGitHubData();
-  const [avatarSrc, setAvatarSrc] = useState(PLAYER_AVATAR_PRIMARY_SRC);
+  const primaryAvatarSrc = getPlayerAvatarSrc(selectedClass);
+  const [avatarSrc, setAvatarSrc] = useState(primaryAvatarSrc);
+
+  useEffect(() => {
+    setAvatarSrc(primaryAvatarSrc);
+  }, [primaryAvatarSrc]);
 
   const handleLoad = useCallback(async () => {
     try {

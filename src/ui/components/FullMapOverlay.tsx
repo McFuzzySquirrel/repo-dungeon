@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useGameScene } from '@/ui/context/GameContext';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import { isTypingInEditableTarget } from '@/ui/systems/keyboard';
-import { PLAYER_AVATAR_FALLBACK_SRC, PLAYER_AVATAR_PRIMARY_SRC } from '@/ui/constants/playerAvatar';
+import { usePlayerStore } from '@/store/playerStore';
+import { PLAYER_AVATAR_FALLBACK_SRC, getPlayerAvatarSrc } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/map.css';
 
 const BIOME_COLORS: Record<string, string> = {
@@ -33,12 +34,18 @@ const BIOME_NAMES: Record<string, string> = {
  */
 export function FullMapOverlay() {
   const { dungeon, playerState, currentRoom } = useGameScene();
+  const selectedClass = usePlayerStore((state) => state.selectedClass);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isOpen, setIsOpen] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [visitedRooms, setVisitedRooms] = useState<Set<string>>(new Set());
-  const [markerSrc, setMarkerSrc] = useState(PLAYER_AVATAR_PRIMARY_SRC);
+  const primaryMarkerSrc = getPlayerAvatarSrc(selectedClass);
+  const [markerSrc, setMarkerSrc] = useState(primaryMarkerSrc);
   const [markerImage, setMarkerImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    setMarkerSrc(primaryMarkerSrc);
+  }, [primaryMarkerSrc]);
 
   // Get visited rooms
   useEffect(() => {

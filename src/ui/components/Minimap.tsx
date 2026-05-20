@@ -1,8 +1,9 @@
 import { useEffect, useRef, useMemo, useState } from 'react';
 import { useGameScene } from '@/ui/context/GameContext';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
+import { usePlayerStore } from '@/store/playerStore';
 import type { DungeonRoomNode, DungeonZone } from '@/game/systems/dungeonTypes';
-import { PLAYER_AVATAR_FALLBACK_SRC, PLAYER_AVATAR_PRIMARY_SRC } from '@/ui/constants/playerAvatar';
+import { PLAYER_AVATAR_FALLBACK_SRC, getPlayerAvatarSrc } from '@/ui/constants/playerAvatar';
 import '@/ui/styles/map.css';
 
 const BIOME_COLORS: Record<string, string> = {
@@ -35,10 +36,16 @@ interface MinimapBounds {
  */
 export function Minimap() {
   const { dungeon, playerState, currentRoom } = useGameScene();
+  const selectedClass = usePlayerStore((state) => state.selectedClass);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visitedRooms, setVisitedRooms] = useState<Set<string>>(new Set());
-  const [markerSrc, setMarkerSrc] = useState(PLAYER_AVATAR_PRIMARY_SRC);
+  const primaryMarkerSrc = getPlayerAvatarSrc(selectedClass);
+  const [markerSrc, setMarkerSrc] = useState(primaryMarkerSrc);
   const [markerImage, setMarkerImage] = useState<HTMLImageElement | null>(null);
+
+  useEffect(() => {
+    setMarkerSrc(primaryMarkerSrc);
+  }, [primaryMarkerSrc]);
 
   // Get visited rooms
   useEffect(() => {

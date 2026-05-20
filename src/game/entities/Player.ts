@@ -1,4 +1,6 @@
 import Phaser from 'phaser';
+import { getPlayerClassSprite } from '@/game/config/characterSprites';
+import type { PlayerClass } from '@/game/config/classes';
 import type { DungeonPoint, DungeonRoomNode } from '@/game/systems/dungeonTypes';
 
 interface KeyLike {
@@ -25,17 +27,21 @@ export interface PlayerState {
 export class Player extends Phaser.Physics.Arcade.Sprite {
   private currentRoom: DungeonRoomNode | null = null;
   private facingDirection: 'up' | 'down' | 'left' | 'right' = 'down';
+  private playerClass: PlayerClass = 'explorer';
 
   private readonly MOVE_SPEED = 340; // pixels per second
   private readonly PLAYER_RADIUS = 8; // collision radius
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
-    const textureKey = scene.textures.exists('sprite-player-hero')
-      ? 'sprite-player-hero'
+  constructor(scene: Phaser.Scene, x: number, y: number, playerClass: PlayerClass = 'explorer') {
+    const classTextureKey = getPlayerClassSprite(playerClass).textureKey;
+    const textureKey = scene.textures.exists(classTextureKey)
+      ? classTextureKey
       : scene.textures.exists('sprite-player')
         ? 'sprite-player'
         : 'player-placeholder';
     super(scene, x, y, textureKey);
+      this.playerClass = playerClass;
+
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -47,10 +53,32 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     body.setMaxSpeed(this.MOVE_SPEED);
 
     // Create a simple circle representation if no sprite available
-    this.setDisplaySize(16, 16);
+    this.setDisplaySize(22, 22);
     if (textureKey === 'player-placeholder') {
       this.setTint(0x4a90e2);
     }
+  }
+
+  applyClassVisual(playerClass: PlayerClass): void {
+    this.playerClass = playerClass;
+    const textureKey = getPlayerClassSprite(playerClass).textureKey;
+    if (this.scene.textures.exists(textureKey)) {
+      this.setTexture(textureKey);
+      this.clearTint();
+      this.setDisplaySize(22, 22);
+      return;
+    }
+
+    if (this.scene.textures.exists('sprite-player')) {
+      this.setTexture('sprite-player');
+      this.clearTint();
+      this.setDisplaySize(22, 22);
+      return;
+    }
+
+    this.setTexture('player-placeholder');
+    this.setTint(0x4a90e2);
+    this.setDisplaySize(22, 22);
   }
 
   /**
