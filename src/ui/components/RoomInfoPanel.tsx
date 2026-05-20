@@ -8,6 +8,7 @@ import {
   touchCachedRoomDetailFreshness,
   type RoomDetailEtags,
 } from '@/github/cache';
+import { useProgressionStore } from '@/store/progressionStore';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import type { RoomEnteredEvent } from '@/ui/context/GameContext';
 import type { GitHubReadmePayload, GitHubRepoSummary, GitHubRoomData } from '@/github/types';
@@ -37,6 +38,7 @@ interface PanelState {
  */
 export function RoomInfoPanel() {
   const { getRoomDetails, cacheRoomDetails } = useGameScene();
+  const incrementGitHubLinkClicks = useProgressionStore((state) => state.incrementGitHubLinkClicks);
   const [state, setState] = useState<PanelState>({
     isOpen: false,
     currentRoomId: null,
@@ -350,6 +352,7 @@ export function RoomInfoPanel() {
                 rel="noopener noreferrer"
                 className="room-info-github-link"
                 aria-label={`Visit ${data.repo.fullName} on GitHub`}
+                onClick={() => incrementGitHubLinkClicks()}
               >
                 Visit on GitHub →
               </a>

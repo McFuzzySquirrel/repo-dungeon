@@ -1,39 +1,66 @@
-/* XP / Level HUD — fixed bottom-left */
+/* XP / Level HUD */
 
 .xp-hud {
-  position: fixed;
-  top: 16px;
-  left: 16px;
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.8rem;
   background: rgba(10, 16, 28, 0.88);
   border: 1px solid rgba(99, 245, 255, 0.22);
-  border-radius: 10px;
-  padding: 0.45rem 0.7rem;
-  z-index: 400;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-  pointer-events: none; /* purely display */
+  border-radius: 16px;
+  padding: 0.95rem 1rem;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.38);
+  pointer-events: auto;
+}
+
+.xp-hud-header {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
 }
 
 .xp-hud-level {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-width: 32px;
+  justify-content: center;
+  min-width: 56px;
+  min-height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, rgba(33, 49, 82, 0.95), rgba(13, 20, 36, 0.96));
+  border: 1px solid rgba(99, 245, 255, 0.18);
   line-height: 1;
+}
+
+.xp-hud-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.xp-hud-title {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: #dce8ff;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.xp-hud-total {
+  color: #89a6c6;
+  font-size: 0.88rem;
 }
 
 .xp-hud-level-label {
   font-family: monospace;
-  font-size: 0.55rem;
+  font-size: 0.6rem;
   color: #6a8aa0;
   letter-spacing: 0.08em;
 }
 
 .xp-hud-level-value {
   font-family: monospace;
-  font-size: 1.15rem;
+  font-size: 1.7rem;
   font-weight: 900;
   color: #63f5ff;
   line-height: 1.1;
@@ -43,38 +70,52 @@
 .xp-hud-bar-col {
   display: flex;
   flex-direction: column;
-  gap: 0.2rem;
-  min-width: 110px;
+  gap: 0.45rem;
+  min-width: 0;
 }
 
 .xp-hud-bar-track {
-  height: 5px;
+  height: 10px;
   background: rgba(255, 255, 255, 0.08);
-  border-radius: 3px;
+  border-radius: 999px;
   overflow: hidden;
 }
 
 .xp-hud-bar-fill {
   height: 100%;
   background: linear-gradient(90deg, #2a8aff 0%, #63f5ff 100%);
-  border-radius: 3px;
+  border-radius: 999px;
   transition: width 0.4s ease;
   box-shadow: 0 0 6px rgba(99, 245, 255, 0.5);
 }
 
 .xp-hud-stats {
   display: flex;
-  justify-content: space-between;
-  gap: 0.5rem;
+  flex-direction: column;
+  gap: 0.18rem;
 }
 
 .xp-hud-stats span {
   font-family: monospace;
-  font-size: 0.65rem;
+  font-size: 0.76rem;
   color: #6a8aa0;
-  white-space: nowrap;
+}
+
+.xp-hud-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.65rem;
 }
 
 .xp-hud-badges {
   color: #f7c06d !important;
+  font-family: monospace;
+  font-size: 0.76rem;
+}
+
+.xp-hud-percent {
+  color: #dfe9ff;
+  font-family: monospace;
+  font-size: 0.76rem;
 }

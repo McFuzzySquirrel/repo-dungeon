@@ -24,6 +24,7 @@ vi.mock('@/ui/components/FullMapOverlay', () => ({ FullMapOverlay: () => <div>Fu
 vi.mock('@/ui/components/RoomInfoPanel', () => ({ RoomInfoPanel: () => <div>RoomInfoPanel</div> }));
 vi.mock('@/ui/components/CharacterSelect', () => ({ CharacterSelect: () => <div>CharacterSelect</div> }));
 vi.mock('@/ui/components/InventoryPanel', () => ({ InventoryPanel: () => <div>InventoryPanel</div> }));
+vi.mock('@/ui/components/BadgePanel', () => ({ BadgePanel: () => <div>BadgePanel</div> }));
 vi.mock('@/ui/components/AudioControls', () => ({ AudioControls: () => <div>AudioControls</div> }));
 vi.mock('@/ui/components/GamePolishOverlay', () => ({ GamePolishOverlay: () => <div>GamePolishOverlay</div> }));
 vi.mock('@/ui/components/ProgressionController', () => ({ ProgressionController: () => <div>ProgressionController</div> }));

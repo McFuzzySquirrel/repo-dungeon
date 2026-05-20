@@ -94,7 +94,7 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
               <li>Earn <strong>XP</strong> by entering rooms, reading READMEs, and interacting with objects.</li>
               <li>Your XP and level appear in the top-left HUD so they stay clear of inventory controls.</li>
               <li>Collect <strong>loot</strong> from room objects and contributor NPCs.</li>
-              <li>Unlock <strong>badges</strong> for milestones — check them in your Inventory.</li>
+              <li>Unlock <strong>badges</strong> for milestones — open the badge panel next to your inventory for details.</li>
             </ul>
           </section>
 

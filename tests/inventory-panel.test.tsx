@@ -39,6 +39,7 @@ const mockInventory: LootItem[] = [
 vi.mock('@/store/progressionStore', () => ({
   useProgressionStore: vi.fn(() => ({
     inventory: mockInventory,
+    unlockedBadges: ['first-steps'],
   })),
 }));
 
@@ -108,6 +109,14 @@ describe('InventoryPanel', () => {
 
     expect(screen.queryByText('Golden Console')).toBeInTheDocument();
     expect(screen.queryByText('Star Fragment')).toBeInTheDocument();
+  });
+
+  it('should display unlocked badges when open', () => {
+    render(<InventoryPanel />);
+    fireEvent.click(screen.getByRole('button', { name: /Open inventory/ }));
+
+    expect(screen.getByText('Badges')).toBeInTheDocument();
+    expect(screen.getByText('First Steps')).toBeInTheDocument();
   });
 
   it('should close on close button click', () => {

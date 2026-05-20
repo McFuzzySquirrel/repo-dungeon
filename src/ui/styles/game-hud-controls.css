@@ -1,11 +1,8 @@
 .game-hud-controls {
-  position: fixed;
-  top: 16px;
-  right: 16px;
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  z-index: 410;
+  flex-wrap: wrap;
 }
 
 .game-hud-zoom {
@@ -57,12 +54,8 @@
 
 @media (max-width: 720px) {
   .game-hud-controls {
-    top: auto;
-    bottom: 16px;
-    right: 16px;
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    max-width: calc(100vw - 32px);
+    justify-content: flex-start;
+    max-width: 100%;
   }
 
   .game-hud-btn,
