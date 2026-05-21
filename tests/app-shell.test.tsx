@@ -3,11 +3,22 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { AppShell } from '@/ui/AppShell';
 import { useDungeonStore } from '@/store/dungeonStore';
 import { useSessionStore } from '@/store/sessionStore';
+import { STORAGE_KEYS } from '@/store/persistence';
 
 type CreateGame = typeof import('@/game/createGame').createGame;
+type DecodeShareableDungeonUrl = typeof import('@/ui/systems/shareUrl').decodeShareableDungeonUrl;
+type GetLocalRepoAccessState = typeof import('@/localRepos/browserAccess').getLocalRepoAccessState;
 
 const { mockCreateGame } = vi.hoisted(() => ({
   mockCreateGame: vi.fn(),
+}));
+
+const { mockGetLocalRepoAccessState } = vi.hoisted(() => ({
+  mockGetLocalRepoAccessState: vi.fn(),
+}));
+
+const { mockDecodeShareableDungeonUrl } = vi.hoisted(() => ({
+  mockDecodeShareableDungeonUrl: vi.fn(),
 }));
 
 vi.mock('@/game/createGame', () => ({
@@ -46,18 +57,31 @@ vi.mock('@/ui/components/WelcomeScreen', () => ({
   ),
 }));
 vi.mock('@/ui/systems/shareUrl', () => ({
-  decodeShareableDungeonUrl: () => null,
+  decodeShareableDungeonUrl: (...args: Parameters<DecodeShareableDungeonUrl>): ReturnType<DecodeShareableDungeonUrl> =>
+    mockDecodeShareableDungeonUrl(...args) as ReturnType<DecodeShareableDungeonUrl>,
+}));
+
+vi.mock('@/localRepos/browserAccess', () => ({
+  getLocalRepoAccessState: (): ReturnType<GetLocalRepoAccessState> =>
+    mockGetLocalRepoAccessState() as ReturnType<GetLocalRepoAccessState>,
 }));
 
 describe('AppShell', () => {
   beforeEach(() => {
+    localStorage.clear();
+    mockDecodeShareableDungeonUrl.mockReturnValue(null);
+    mockGetLocalRepoAccessState.mockReturnValue({
+      isLocalRepoModeAvailable: true,
+      environment: 'trusted-local-web',
+      reason: null,
+    });
     mockCreateGame.mockReturnValue({
       destroy: vi.fn(),
       scene: {
         getScene: vi.fn(() => null),
       },
     });
-    useSessionStore.setState({ usernameInput: '' });
+    useSessionStore.setState({ usernameInput: '', selectedSourceKind: 'github' });
     useDungeonStore.setState({ seed: null });
   });
 
@@ -70,5 +94,59 @@ describe('AppShell', () => {
 
     expect(screen.getByText('Minimap')).toBeInTheDocument();
     expect(screen.queryByLabelText('GitHub connection panel')).not.toBeInTheDocument();
+  });
+
+  it('restores github source selection and username from persisted source identity', () => {
+    localStorage.setItem(STORAGE_KEYS.selectedSource, 'github:octocat');
+
+    render(<AppShell />);
+
+    expect(useSessionStore.getState().selectedSourceKind).toBe('github');
+    expect(useSessionStore.getState().usernameInput).toBe('octocat');
+  });
+
+  it('restores local source selection when local mode is available', () => {
+    localStorage.setItem(STORAGE_KEYS.selectedSource, 'local:workspace%2Frepos');
+
+    render(<AppShell />);
+
+    expect(useSessionStore.getState().selectedSourceKind).toBe('local');
+  });
+
+  it('falls back to github source when persisted local source is unavailable in runtime', () => {
+    mockGetLocalRepoAccessState.mockReturnValue({
+      isLocalRepoModeAvailable: false,
+      environment: 'hosted-web',
+      reason: 'Local repository mode is disabled on hosted builds.',
+    });
+    localStorage.setItem(STORAGE_KEYS.selectedSource, 'local:workspace%2Frepos');
+
+    render(<AppShell />);
+
+    expect(useSessionStore.getState().selectedSourceKind).toBe('github');
+  });
+
+  it('preserves persisted local source identity without writing placeholder values', () => {
+    localStorage.setItem(STORAGE_KEYS.selectedSource, 'local:workspace%2Frepos');
+    useSessionStore.setState({ selectedSourceKind: 'local' });
+
+    render(<AppShell />);
+
+    expect(localStorage.getItem(STORAGE_KEYS.selectedSource)).toBe('local:workspace%2Frepos');
+  });
+
+  it('restores shared links as github source even when a local source was persisted', () => {
+    localStorage.setItem(STORAGE_KEYS.selectedSource, 'local:workspace%2Frepos');
+    useSessionStore.setState({ selectedSourceKind: 'local' });
+    mockDecodeShareableDungeonUrl.mockReturnValue({
+      username: 'octocat',
+      seed: 'shared-seed',
+    });
+
+    render(<AppShell />);
+
+    expect(useSessionStore.getState().selectedSourceKind).toBe('github');
+    expect(useSessionStore.getState().usernameInput).toBe('octocat');
+    expect(useDungeonStore.getState().seed).toBe('shared-seed');
   });
 });

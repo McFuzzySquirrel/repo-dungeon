@@ -38,6 +38,13 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 - **Section 14 — Implementation Phases**: Phase 1 and Phase 2 gameplay delivery tasks
 - **Section 15 — Testing Strategy**: Exploration, movement, and interaction test scenarios
 
+For the Local Repository Dungeon Generation feature, also consult [docs/features/FT-local-repo-dungeons.md](../../docs/features/FT-local-repo-dungeons.md):
+
+- **Section 5 — Technical Approach**: Basement-navigation and local-room traversal impact
+- **Section 6 — Functional Requirements**: FT-FR-11 support for subdirectory exploration inside local rooms
+- **Section 8 — Agent Impact Assessment**: Extended gameplay responsibilities for basement entry/exit flow
+- **Section 9 — Implementation Phases**: F3 gameplay work for local room exploration
+
 ---
 
 ## Responsibilities
@@ -59,6 +66,12 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 7. Own the Phaser-side event wiring for room entry, inventory/map toggles, info-panel shortcuts, and completion-state transitions.
 8. Expose stable event contracts so UI, progression, and content systems can react without modifying core scene code.
 9. Keep runtime interaction flow aligned with the lifecycle diagram in Section 13.
+
+### Local Room Traversal (`src/game/scenes/DungeonScene.ts`, scene events and local-room contracts)
+
+10. Implement the gameplay-side transitions required for FT-FR-11 so local repository rooms can expose basement entry and exit flows for supported subdirectories.
+11. Emit stable scene events for local-room and basement traversal without moving room-detail rendering or local metadata ownership into Phaser code.
+12. Keep local traversal additive so GitHub-source exploration behavior remains unchanged.
 
 ---
 
@@ -106,6 +119,7 @@ When executing your responsibilities:
 - **project-architect** — Supplies bootstrap structure, config boundaries, and shared stores
 - **dungeon-generation-engineer** — Provides the dungeon graph, zone metadata, and room topology you render
 - **github-platform-engineer** — Supplies room-loading contracts and data lifecycle hooks for room entry
+- **local-repo-platform-engineer** — Supplies basement metadata, local room interaction contracts, and launch/action hooks consumed during local traversal
 - **ui-experience-engineer** — Renders DOM overlays and shortcut-driven UI states on top of your scene events
 - **progression-rewards-engineer** — Consumes room-entry, panel, and visit events for XP, visited stamps, and rewards
 - **world-content-engineer** — Integrates room props, NPC behavior hooks, and biome presentation assets into scenes

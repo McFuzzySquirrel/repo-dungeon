@@ -33,6 +33,13 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 - **Section 14 — Implementation Phases**: Foundation, integration sequencing, and release milestones
 - **Section 18 — Dependencies and Risks**: Package, hosting, and build-chain risks
 
+For the Local Repository Dungeon Generation feature, also consult [docs/features/FT-local-repo-dungeons.md](../../docs/features/FT-local-repo-dungeons.md):
+
+- **Section 5 — Technical Approach**: Source-aware architecture, new shared components, and persistence impact
+- **Section 6 — Functional Requirements**: FT-FR-07 and FT-FR-08 ownership for shared contracts and source persistence
+- **Section 8 — Agent Impact Assessment**: Extended project-architect responsibilities for multi-source boundaries
+- **Section 9 — Implementation Phases**: F1 foundation tasks for source model and security gating
+
 ---
 
 ## Responsibilities
@@ -48,6 +55,12 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 4. Establish shared domain types, store boundaries, and configuration patterns used by gameplay, UI, and GitHub integration work.
 5. Define deterministic persistence keys and state partitioning for session, dungeon, and player data.
 6. Protect folder ownership boundaries so specialist agents can work without overlapping file responsibilities.
+
+### Local Repository Source Foundation (`src/repository/`, `src/store/`, shared bootstrap boundaries)
+
+10. Define the shared multi-source repository contracts required by FT-FR-07 so GitHub and local repository inputs can coexist without forking core app architecture.
+11. Extend persistence and source-identity conventions for FT-FR-08 so local source selection and cached metadata remain machine-local and deterministic.
+12. Establish integration boundaries between local platform access, React onboarding, dungeon generation, and gameplay traversal so the feature remains additive to the shipped GitHub flow.
 
 ### Delivery Foundation (`public/`, `maps/`, `.github/workflows/`, `electron-builder.config.js`)
 
@@ -99,6 +112,7 @@ When executing your responsibilities:
 
 - **project-orchestrator** — Coordinates phase order, sequencing, and cross-agent integration
 - **github-platform-engineer** — Consumes shared types, app bootstrap hooks, and persistence conventions
+- **local-repo-platform-engineer** — Provides local source runtime contracts, scan metadata, and machine-local persistence needs for the shared architecture
 - **phaser-gameplay-engineer** — Builds on the scene bootstrap, config, and store boundaries you establish
 - **ui-experience-engineer** — Integrates React overlays and DOM accessibility with the shared application shell
 - **release-infra-engineer** — Aligns build scripts, workflows, packaging config, and deployment entry points

@@ -1,10 +1,66 @@
 # Project Progress
 
 ## Current State
-**Phase**: Phase 6 — Desktop & Release hardening (Complete) + Post-completion optimization layer
-**Status**: Complete with post-release UX, mobile, OAuth removal, GitHub REST optimization, and documentation updates  
-**Last Updated**: 2026-05-20T22:20:00Z  
-**PRD**: /home/runner/work/repo-dungeon/repo-dungeon/docs/PRD.md
+**Mode**: Feature Increment Execution  
+**Feature PRD**: docs/features/FT-local-repo-dungeons.md  
+**Phase**: Phase F4 — Validation and Rollout Hardening  
+**Status**: Complete (Paused after F4 by request)  
+**Last Updated**: 2026-05-21T13:30:00Z  
+**Base PRD**: docs/PRD.md
+
+## Feature Progress: Local Repository Dungeon Generation
+
+## Completed Tasks
+- [x] Phase F1, Task 1: Define source-aware repository/domain types (`project-architect`) [model: default]
+  - Files: `src/repository/source.ts`, `src/repository/types.ts`
+- [x] Phase F1, Task 2: Define source-aware persistence keys/restoration rules (`project-architect`) [model: default]
+  - Files: `src/store/persistence.ts`, `tests/persistence.test.ts`
+- [x] Phase F1, Task 3: Add runtime/origin local-mode gating (`ui-experience-engineer`) [model: default]
+  - Files: `src/localRepos/browserAccess.ts`, `tests/local-repo-browser-access.test.ts`
+- [x] Phase F1, Task 4: Add additive source-selection onboarding and startup restore wiring (`ui-experience-engineer`) [model: default]
+  - Files: `src/store/sessionStore.ts`, `src/ui/components/WelcomeScreen.tsx`, `src/ui/AppShell.tsx`, `src/ui/styles/welcome-screen.css`, `tests/welcome-screen-public.test.tsx`, `tests/app-shell.test.tsx`
+- [x] Phase F1, Task 5: Phase validation and regression checks (`qa-test-engineer`) [model: default]
+  - Files: `tests/repository-source.test.ts`, `tests/welcome-screen-public.test.tsx`, `tests/app-shell.test.tsx`, `tests/persistence.test.ts`
+- [x] Phase F2, Task 1: Implement local repository acquisition platform layer (`local-repo-platform-engineer`) [model: default]
+  - Files: `src/localRepos/types.ts`, `src/localRepos/metadata.ts`, `src/localRepos/git.ts`, `src/localRepos/cache.ts`, `src/localRepos/scan.ts`, `src/localRepos/electronAccess.ts`, `src/localRepos/browserAccess.ts`, `src/electron/localRepos.ts`, `src/electron/main.ts`, `src/electron/preload.ts`, `tests/local-repo-scan.test.ts`, `tests/local-repo-git.test.ts`, `tests/local-repo-cache.test.ts`, `tests/local-repo-metadata.test.ts`
+- [x] Phase F2, Task 2: Integrate local source pick/scan/start flow in onboarding (`ui-experience-engineer`) [model: default]
+  - Files: `src/ui/hooks/useRepositorySource.ts`, `src/ui/components/WelcomeScreen.tsx`, `src/ui/AppShell.tsx`, `src/ui/styles/welcome-screen.css`, `tests/welcome-screen-public.test.tsx`, `tests/app-shell.test.tsx`
+- [x] Phase F2, Task 3: Validate F2 scan/progress and mixed-source regressions (`qa-test-engineer`) [model: default]
+  - Files: `tests/local-repo-scan.test.ts`, `tests/welcome-screen-public.test.tsx`
+- [x] Phase F3, Task 1: Add local launch contracts and secure open-path IPC bridge (`local-repo-platform-engineer`) [model: default]
+  - Files: `src/localRepos/types.ts`, `src/localRepos/pathTokens.ts`, `src/localRepos/metadata.ts`, `src/localRepos/browserAccess.ts`, `src/localRepos/electronAccess.ts`, `src/electron/localRepoPaths.ts`, `src/electron/localRepos.ts`, `src/electron/preload.ts`, `tests/local-repo-path-tokens.test.ts`, `tests/local-repo-electron-access.test.ts`, `tests/local-repo-metadata.test.ts`
+- [x] Phase F3, Task 2: Extend scan candidates with basement directory inventories (`local-repo-platform-engineer`) [model: default]
+  - Files: `src/localRepos/types.ts`, `src/localRepos/scan.ts`, `src/electron/localRepos.ts`, `tests/local-repo-scan.test.ts`, `tests/local-repo-metadata.test.ts`
+- [x] Phase F3, Task 3: Implement source-aware local room details and basement explorer UI (`ui-experience-engineer`) [model: default]
+  - Files: `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/BasementExplorer.tsx`, `src/ui/styles/room-info.css`, `src/ui/styles/basement-explorer.css`, `tests/room-info-panel.local.test.tsx`, `tests/basement-explorer.test.tsx`
+- [x] Phase F3, Task 4: Validate local room/basement/open-action regressions (`qa-test-engineer`) [model: default]
+  - Files: `tests/room-info-panel.local.test.tsx`
+- [x] Phase F4, Task 1: Harden share URL safety and regression restore behavior (`qa-test-engineer`) [model: default]
+  - Files: `src/ui/systems/shareUrl.ts`, `tests/share-url.test.ts`, `tests/app-shell.test.tsx`
+- [x] Phase F4, Task 2: Expand verification coverage for gating, IPC boundaries, local scan/cache/git fallback, and basement interactions (`qa-test-engineer`) [model: default]
+  - Files: `tests/local-repo-browser-access.test.ts`, `tests/local-repo-electron-access.test.ts`, `tests/local-repo-path-tokens.test.ts`, `tests/local-repo-scan.test.ts`, `tests/local-repo-cache.test.ts`, `tests/local-repo-git.test.ts`, `tests/local-repo-metadata.test.ts`, `tests/room-info-panel.local.test.tsx`, `tests/basement-explorer.test.tsx`, `tests/room-info-panel.test.tsx`, `tests/welcome-screen-public.test.tsx`, `tests/app-shell.test.tsx`, `tests/share-url.test.ts`
+- [x] Phase F4, Task 3: Update player-facing local-mode rollout documentation (`release-infra-engineer`) [model: default]
+  - Files: `README.md`, `docs/features/FT-local-repo-dungeons.md`
+
+## Current Task
+- [x] None
+  - Status: Paused
+  - Notes: User requested execution through F4 only.
+
+## Remaining
+- [x] None.
+
+## Blockers
+- None
+
+## Notes
+- Tech additions introduced by this feature do not require new npm dependencies in F1; runtime gating and source model foundations were implemented.
+- Phase F2 delivered parent-folder picking, recursive local git-repo discovery, ignore filtering, scan progress reporting, optional git metadata with graceful fallback, and machine-local selection/cache restoration.
+- Phase F3 delivered source-aware local room details, basement directory exploration, and secure local open-path actions through preload/main IPC without exposing renderer Node access.
+- Phase F4 delivered rollout hardening coverage for hosted/local gating, Electron IPC boundaries, recursive scan/cache/git-fallback/basement interactions, share-url non-leak guarantees, and player-facing local-mode guidance.
+- Validation run passed: `npm run typecheck` and targeted Vitest suite for F4/regression (`53/53` tests).
+
+## Historical Baseline: Main PRD Execution
 
 ## Post-Completion Updates
 - [x] Refined the gameplay HUD into a vertical left-rail layout with a larger XP card, separate inventory and badge buttons, and a dedicated badge details panel.
@@ -22,10 +78,8 @@
   - Files: `src/github/api.ts`, `src/github/cache.ts`, `src/github/types.ts`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/RateLimitHud.tsx`, `src/ui/styles/rate-limit-hud.css`, `src/ui/AppShell.tsx`, `tests/github-api.test.ts`, `tests/github-cache.test.ts`, `docs/optimization-research.md`
 - [x] Simplified GitHub entry UX so auth is owned once at the app shell, restored sessions are reflected on the welcome screen, and gameplay no longer renders a duplicate GitHub auth panel.
   - Files: `src/ui/AppShell.tsx`, `src/ui/components/WelcomeScreen.tsx`, `src/ui/hooks/useGitHubAuth.ts`, `tests/app-shell.test.tsx`, `tests/welcome-screen-auth.test.tsx`
-- [x] Corrected GitHub OAuth token exchange architecture for deployed web builds and Electron. *(superseded by the OAuth removal above)*
-  - Files: `src/github/auth.ts`, `src/electron/main.ts`, `src/electron/preload.ts`, `scripts/github-oauth-proxy.mjs`, `.github/workflows/deploy-pages.yml`, `README.md`, `tests/github-auth-exchange.test.ts`, `tests/github-auth-errors.test.ts`
-- [x] Added friendlier auth/setup error messaging and deployment guidance for local development and GitHub Pages. *(no longer needed after OAuth removal)*
-  - Files: `src/ui/hooks/useGitHubAuth.ts`, `README.md`
+- [x] Historical OAuth/web-auth deployment updates were completed before v1.2 and are now superseded by the public-repos-only architecture.
+  - Historical files touched: `src/github/auth.ts`, `src/electron/main.ts`, `src/electron/preload.ts`, `scripts/github-oauth-proxy.mjs`, `src/ui/hooks/useGitHubAuth.ts`, `README.md`, `tests/github-auth-exchange.test.ts`, `tests/github-auth-errors.test.ts`
 - [x] Added mobile touch controls for gameplay on coarse-pointer devices, including a virtual D-pad and interact button.
   - Files: `src/game/scenes/DungeonScene.ts`, `src/ui/components/TouchControls.tsx`, `src/ui/AppShell.tsx`, `src/ui/styles/touch-controls.css`, `tests/dungeon-scene.test.ts`, `tests/touch-controls.test.tsx`
 - [x] Added README welcome-screen screenshot and updated player-facing documentation.
@@ -34,14 +88,14 @@
 ## Completed Tasks
 - [x] Phase 1, Task 1.1: Initialize Vite + Phaser + React + TypeScript scaffold (`project-architect`) [model: default]
   - Files: `package.json`, `vite.config.ts`, `tsconfig*.json`, `src/main.tsx`, `src/ui/AppShell.tsx`, `src/game/*`, `src/styles.css`
-- [x] Phase 1, Task 1.2: Implement GitHub OAuth flow for web/Electron token storage (`github-platform-engineer`) [model: default]
+- [x] Phase 1, Task 1.2: Implement GitHub auth flow for web/Electron token storage (`github-platform-engineer`) [model: default] *(historical; removed in v1.2)*
   - Files: `src/github/auth.ts`, `src/electron/preload.ts`, `src/electron/secureStorage.ts`
 - [x] Phase 1, Task 1.3: Implement GitHub API client with caching, pagination, room data loading (`github-platform-engineer`) [model: default]
   - Files: `src/github/api.ts`, `src/github/types.ts`, `src/game/systems/RoomLoader.ts`, `src/ui/hooks/useGitHubData.ts`, `tests/github-api.test.ts`
 - [x] Phase 1, Task 1.4: Add Electron main process and packaging config (`release-infra-engineer`) [model: default]
   - Files: `src/electron/main.ts`, `electron-builder.config.js`
-- [x] Phase 1, Task 1.5: Add CI and Pages deploy workflows (`release-infra-engineer`) [model: default]
-  - Files: `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`
+- [x] Phase 1, Task 1.5: Add CI workflow foundations (`release-infra-engineer`) [model: default]
+  - Files: `.github/workflows/ci.yml`
 - [x] Phase 2, Task 2.1: Implement deterministic BSP dungeon generator, zone grouping, room mapping, corridor/gateway connectivity (`dungeon-generation-engineer`) [model: default]
   - Files: `src/game/systems/DungeonGenerator.ts`, `src/game/systems/dungeonTypes.ts`, `src/game/config/biomes.ts`, `tests/dungeon-generator.test.ts`
 - [x] Phase 2, Task 2.2: Render generated dungeon in Phaser scene with player movement (`phaser-gameplay-engineer`) [model: default]
@@ -55,17 +109,17 @@
 - [x] Phase 5, Task 5.1–5.3: Biome polish, NPC/object interaction scaffolding, ambient hooks, tutorial/share-url support (`world-content-engineer`) [model: default]
   - Files: `src/game/config/biomePresentation.ts`, `src/game/entities/NPCContributor.ts`, `src/game/entities/RoomObject.ts`, `src/game/entities/roomContent.ts`, `src/game/scenes/DungeonScene.ts`, `src/game/audio/audioSettings.ts`, `src/ui/components/AudioControls.tsx`, `src/ui/components/GamePolishOverlay.tsx`, `src/ui/context/GameContext.tsx`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/shareUrl.ts`, `src/ui/AppShell.tsx`, `tests/biome-presentation.test.ts`, `tests/room-content.test.ts`, `tests/share-url.test.ts`, `public/assets/CREDITS.md`
 - [x] Phase 6, Task 6.1–6.4: Desktop packaging, cross-browser/perf/accessibility audits, release hardening (`release-infra-engineer`) [model: default]
-  - Files: `.github/workflows/ci.yml`, `.github/workflows/deploy-pages.yml`, `.github/workflows/release-desktop.yml`, `electron-builder.config.js`, `vite.config.ts`, `scripts/check-bundle-size.mjs`, `src/electron/main.ts`, `src/electron/secureStorage.ts`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/clipboard.ts`, `src/styles.css`, `README.md`, `package.json`, `package-lock.json`, `eslint.config.js`
+  - Files: `.github/workflows/ci.yml`, `.github/workflows/release-desktop.yml`, `electron-builder.config.js`, `vite.config.ts`, `scripts/check-bundle-size.mjs`, `src/electron/main.ts`, `src/electron/secureStorage.ts`, `src/ui/components/GitHubAuthPanel.tsx`, `src/ui/systems/clipboard.ts`, `src/styles.css`, `README.md`, `package.json`, `package-lock.json`, `eslint.config.js`
 
 ## Phase Summaries
 
 ### ✅ Phase 1: Foundation
 **Built**
 - Full TypeScript/Vite/React/Phaser foundation.
-- GitHub OAuth/session flow with local web storage and Electron secure-storage bridge.
+- Initial GitHub auth/session flow with local web storage and Electron secure-storage bridge. *(historical; removed in v1.2)*
 - Octokit-based GitHub data client with in-memory caching, pagination, backoff, and room-detail loading support.
 - Baseline static Phaser room scene.
-- Electron packaging setup and GitHub Actions CI/Pages workflows.
+- Electron packaging setup and GitHub Actions CI workflows.
 
 **Tests/Checks Passed**
 - `npm run lint`
@@ -179,12 +233,12 @@
 - `npm run package:electron` ✓ (linux unpacked artifact)
 
 ## Current Task
-- [ ] None (project complete)
+- [x] None (project complete)
   - Status: Complete
   - Notes: All PRD phases (1–6) are completed.
 
 ## Remaining
-- [ ] None.
+- [x] None.
 
 ## Blockers
 - None
@@ -197,7 +251,7 @@
 - Post-completion documentation refresh (game-focused README) completed in commit `aea748a`.
 - Post-completion input-routing hotfix (typing vs gameplay shortcut conflicts) completed in commit `c51c149`.
 - Post-completion dungeon reload/auth-start visibility fix completed in commit `4496bc9`.
-- Post-completion welcome/auth UX and GitHub Pages OAuth exchange updates landed across commits `6992c24` and `e70dbd9`.
+- Post-completion legacy auth UX and hosted exchange updates landed across commits `6992c24` and `e70dbd9` (later superseded by OAuth removal).
 - Post-completion mobile touch controls landed in commit `9e8da9f`, with follow-up CI/build fixes in `2343fc1` and `0634de2`, and final mobile/render + README screenshot updates in `c49a90c`.
 - Post-completion OAuth removal landed in an earlier commit on `main`; the app is now public-repos-only with a persistent `localStorage` cache keyed by username.
 - Post-completion GitHub REST optimization layer (ETag/304 revalidation, summary reuse, lazy README/contributors, rate-limit HUD, graceful degradation) landed in this PR. Cold-cache cost per room: **5 → 2** calls. Returning visits with unchanged data: **0 quota**.

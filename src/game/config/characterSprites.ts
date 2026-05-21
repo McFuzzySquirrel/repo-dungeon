@@ -7,7 +7,7 @@ export interface CharacterSpriteDefinition {
   assetPath: string;
 }
 
-export type NpcSpriteId = 'scribe' | 'smith' | 'scout';
+export type NpcSpriteId = 'scribe' | 'smith' | 'contributor';
 
 const PLAYER_CLASS_SPRITES: Record<PlayerClass, CharacterSpriteDefinition> = {
   explorer: {
@@ -43,14 +43,14 @@ const NPC_SPRITES: Record<NpcSpriteId, CharacterSpriteDefinition> = {
     textureKey: 'sprite-npc-smith',
     assetPath: resolveAssetPath('/assets/sprites/npc-smith.svg'),
   },
-  scout: {
-    id: 'scout',
-    textureKey: 'sprite-npc-scout',
-    assetPath: resolveAssetPath('/assets/sprites/npc-scout.svg'),
+  contributor: {
+    id: 'contributor',
+    textureKey: 'sprite-npc-contributor',
+    assetPath: resolveAssetPath('/assets/sprites/npc-contributor.svg'),
   },
 };
 
-const NPC_SPRITE_ORDER: NpcSpriteId[] = ['scribe', 'smith', 'scout'];
+const NPC_SPRITE_ORDER: NpcSpriteId[] = ['scribe', 'smith', 'contributor'];
 
 export function getPlayerClassSprite(playerClass: PlayerClass | null | undefined): CharacterSpriteDefinition {
   return PLAYER_CLASS_SPRITES[playerClass ?? 'explorer'];

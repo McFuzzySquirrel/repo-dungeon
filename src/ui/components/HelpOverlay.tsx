@@ -83,8 +83,21 @@ export function HelpOverlay({ onClose }: HelpOverlayProps) {
               <li>Walk into a room to discover it — each room is a GitHub repository.</li>
               <li>Use the top-right zoom controls if labels feel cramped or you need a wider view.</li>
               <li>Open the <strong>Room Info Panel</strong> to read the README, browse files, and see contributors.</li>
+              <li>Use the <strong>Readme</strong> tab in local rooms, then click <strong>Load Full README</strong> to replace preview text with the full file from disk.</li>
+              <li>Use the <strong>Files</strong> tab in local rooms to inspect top-level entries and explore project folders.</li>
               <li>Rooms are grouped into <strong>biome zones</strong> themed by language and topics.</li>
               <li>Visited rooms are marked on the minimap with a ✓.</li>
+            </ul>
+          </section>
+
+          <section className="help-section">
+            <h3 className="help-section-title">🗂️ Local Repository Mode</h3>
+            <ul className="help-list">
+              <li>From the welcome screen, choose <strong>Local Repository Mode</strong> and pick a parent folder to scan.</li>
+              <li>The scan creates dungeon rooms from discovered repos and caches a short README preview for faster loading.</li>
+              <li>In Electron, <strong>Open Repository</strong> and <strong>Open in Editor</strong> launch filesystem paths directly.</li>
+              <li>In browser-local mode (localhost/file), direct folder opening is disabled by platform security limits.</li>
+              <li>If a folder moved or was deleted, re-scan from the welcome screen to refresh local room links.</li>
             </ul>
           </section>
 

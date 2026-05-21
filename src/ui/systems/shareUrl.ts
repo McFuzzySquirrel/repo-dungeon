@@ -13,6 +13,22 @@ interface EncodedSharePayload {
   badgeCount?: number;
 }
 
+const GITHUB_USERNAME_PATTERN = /^[a-z\d](?:[a-z\d-]{0,37}[a-z\d])?$/iu;
+const SHARE_ROOM_ID_PATTERN = /^[a-z\d:_-]+$/iu;
+
+function isValidGitHubUsername(value: string): boolean {
+  return GITHUB_USERNAME_PATTERN.test(value);
+}
+
+function isSafeShareRoomId(value: string): boolean {
+  if (!SHARE_ROOM_ID_PATTERN.test(value)) {
+    return false;
+  }
+
+  const lowered = value.toLowerCase();
+  return !lowered.includes('file:') && !value.includes('..');
+}
+
 function toBase64Url(value: string): string {
   const base64 = btoa(value);
   return base64.replaceAll('+', '-').replaceAll('/', '_').replace(/=+$/u, '');
@@ -25,8 +41,8 @@ function fromBase64Url(value: string): string {
 
 export function encodeShareableDungeonUrl(state: ShareableDungeonState, baseUrl: string): string {
   const trimmedUser = state.username.trim();
-  if (!trimmedUser) {
-    throw new Error('Username is required to build a share URL.');
+  if (!trimmedUser || !isValidGitHubUsername(trimmedUser)) {
+    throw new Error('A valid GitHub username is required to build a share URL.');
   }
 
   const url = new URL(baseUrl);
@@ -36,7 +52,7 @@ export function encodeShareableDungeonUrl(state: ShareableDungeonState, baseUrl:
   if (state.seed) {
     payload.seed = state.seed;
   }
-  if (state.roomId) {
+  if (state.roomId && isSafeShareRoomId(state.roomId)) {
     payload.roomId = state.roomId;
   }
   if (state.level && state.level > 1) {
@@ -58,7 +74,7 @@ export function encodeShareableDungeonUrl(state: ShareableDungeonState, baseUrl:
 export function decodeShareableDungeonUrl(urlValue: string): ShareableDungeonState | null {
   const url = new URL(urlValue);
   const username = url.searchParams.get('user')?.trim();
-  if (!username) {
+  if (!username || !isValidGitHubUsername(username)) {
     return null;
   }
 
@@ -69,10 +85,12 @@ export function decodeShareableDungeonUrl(urlValue: string): ShareableDungeonSta
 
   try {
     const payload = JSON.parse(fromBase64Url(encodedPayload)) as EncodedSharePayload;
+    const decodedRoomId = payload.roomId;
+
     return {
       username,
       seed: payload.seed,
-      roomId: payload.roomId,
+      roomId: decodedRoomId && isSafeShareRoomId(decodedRoomId) ? decodedRoomId : undefined,
       level: payload.level,
       badgeCount: payload.badgeCount,
     };

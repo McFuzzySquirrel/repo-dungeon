@@ -39,6 +39,15 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 - **Section 15 — Testing Strategy**: Component and accessibility verification scope
 - **Section 17 — Acceptance Criteria**: Room display, map, sharing, and WCAG commitments
 
+For the Local Repository Dungeon Generation feature, also consult [docs/features/FT-local-repo-dungeons.md](../../docs/features/FT-local-repo-dungeons.md):
+
+- **Section 1 — Feature Overview**: Additive local source scope and hosted-build restrictions
+- **Section 5 — Technical Approach**: Source picker, local room presentation, and basement UI impact
+- **Section 6 — Functional Requirements**: FT-FR-01, FT-FR-03, FT-FR-09, FT-FR-14, and FT-FR-16 ownership
+- **Section 7 — Non-Functional Requirements**: Accessible disabled states, permission prompts, and local-room UX requirements
+- **Section 9 — Implementation Phases**: F1-F4 UI work for source selection, local room views, and rollout hardening
+- **Section 12 — Acceptance Criteria**: Hosted-build messaging and additive GitHub-flow preservation expectations
+
 ---
 
 ## Responsibilities
@@ -60,6 +69,12 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 7. Implement FR-37 through FR-43 for minimap/full-map displays, room highlighting, zone labels, and one-click share UX.
 8. Render deterministic dungeon and share-state metadata provided by generation and platform agents without recreating those calculations.
 9. Maintain responsive, readable layouts across desktop and mobile web targets from Sections 7, 11, and 12.
+
+### Local Repository Source UI (`src/ui/components/WelcomeScreen.tsx`, `src/ui/components/RoomInfoPanel.tsx`, `src/ui/hooks/`)
+
+10. Implement FT-FR-01 and FT-FR-03 by adding a local repository source option, trusted-environment messaging, and hosted-build disabled states without regressing the current GitHub username flow.
+11. Implement FT-FR-09 and FT-FR-16 by surfacing local scan progress, permission-denied states, and source-specific room details for git/filesystem-derived metadata.
+12. Preserve FT-FR-14 by keeping sharing UI explicitly GitHub-source-only and preventing local filesystem references from entering share surfaces.
 
 ---
 
@@ -106,6 +121,7 @@ When executing your responsibilities:
 - **project-orchestrator** — Coordinates UX delivery across authentication, exploration, progression, and release phases
 - **project-architect** — Supplies app-shell and shared-store integration points
 - **github-platform-engineer** — Provides auth, repo-detail, and share-safe URL data to display
+- **local-repo-platform-engineer** — Provides trusted-environment checks, local scan progress, local room metadata, and launch actions for player-facing local mode
 - **phaser-gameplay-engineer** — Emits keyboard shortcuts, room-entry, and overlay-toggle events your components respond to
 - **dungeon-generation-engineer** — Supplies zone, room, and progress metadata for map rendering
 - **progression-rewards-engineer** — Supplies XP, loot, badges, and class data rendered by HUD, inventory, and selection screens

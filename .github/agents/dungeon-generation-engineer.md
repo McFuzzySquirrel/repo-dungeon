@@ -38,6 +38,13 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 - **Section 17 — Acceptance Criteria**: Room-per-repo, timing, and biome correctness
 - **Section 20 — Open Questions**: Repo-count limits, deterministic rerolls, and private-sharing rules
 
+For the Local Repository Dungeon Generation feature, also consult [docs/features/FT-local-repo-dungeons.md](../../docs/features/FT-local-repo-dungeons.md):
+
+- **Section 5 — Technical Approach**: Source-aware generation inputs and basement exploration contracts
+- **Section 6 — Functional Requirements**: FT-FR-07 support and local-repo room topology impact
+- **Section 8 — Agent Impact Assessment**: Extended generation responsibilities for local-source integration
+- **Section 9 — Implementation Phases**: F1-F3 integration tasks affecting generator contracts
+
 ---
 
 ## Responsibilities
@@ -59,6 +66,12 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 7. Own the canonical dungeon graph model used by minimap, full map, and exploration systems.
 8. Surface loading progress and generation status transitions required by Section 13 lifecycle states.
 9. Provide data contracts that let other agents render or persist maps without re-implementing generation logic.
+
+### Local Source Generation Integration (`src/game/systems/DungeonGenerator.ts`, scene-facing interfaces)
+
+10. Extend the generator-facing repository contracts needed for FT-FR-07 so local repositories can enter the existing room-per-repo flow without breaking GitHub-source determinism.
+11. Define how local repository basement and subdirectory metadata is exposed to gameplay and UI consumers without duplicating traversal logic.
+12. Preserve existing biome and layout behavior for GitHub-source dungeons while integrating local-source inputs additively.
 
 ---
 
@@ -105,6 +118,7 @@ When executing your responsibilities:
 - **project-orchestrator** — Sequences repo-fetch, generation, rendering, and progression milestones
 - **project-architect** — Provides shared store boundaries and generator integration points
 - **github-platform-engineer** — Supplies repo lists, pagination signals, and data-shape guarantees
+- **local-repo-platform-engineer** — Supplies normalized local repository summaries, scan metadata, and basement descriptors for generation inputs
 - **phaser-gameplay-engineer** — Renders the generated graph and navigates the resulting rooms and corridors
 - **ui-experience-engineer** — Consumes zone and room metadata for loading progress, minimap, and full-map displays
 - **world-content-engineer** — Applies biome art, room-object themes, and audiovisual dressing to your generation outputs

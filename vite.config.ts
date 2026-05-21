@@ -6,9 +6,10 @@ import legacy from '@vitejs/plugin-legacy';
 
 export default defineConfig(({ mode }) => {
   const isProfileMode = mode === 'profile';
+  const isElectronMode = mode === 'electron';
 
   return {
-    base: process.env.VITE_BASE_PATH ?? '/',
+    base: process.env.VITE_BASE_PATH ?? (isElectronMode ? './' : '/'),
     plugins: [
       react(),
       legacy({

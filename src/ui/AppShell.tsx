@@ -19,9 +19,13 @@ import { ProgressionController } from '@/ui/components/ProgressionController';
 import { XpHud } from '@/ui/components/XpHud';
 import { RateLimitHud } from '@/ui/components/RateLimitHud';
 import { decodeShareableDungeonUrl } from '@/ui/systems/shareUrl';
+import { getLocalRepoAccessState } from '@/localRepos/browserAccess';
+import { parseSourceIdentityFromStorage, serializeSourceIdentityForStorage } from '@/repository/source';
+import { STORAGE_KEYS } from '@/store/persistence';
 import { useSessionStore } from '@/store/sessionStore';
 import { useDungeonStore } from '@/store/dungeonStore';
 import type { GitHubRepoSummary } from '@/github/types';
+import type { LocalSourceSelection } from '@/localRepos/types';
 import '@/ui/styles/help-overlay.css';
 
 interface RestartableScene {
@@ -34,6 +38,10 @@ export function AppShell() {
   const [game, setGame] = useState<Phaser.Game | null>(null);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showHelp, setShowHelp] = useState(false);
+  const [localRepoAccess] = useState(getLocalRepoAccessState);
+  const usernameInput = useSessionStore((state) => state.usernameInput);
+  const setSelectedSourceKind = useSessionStore((state) => state.setSelectedSourceKind);
+  const selectedSourceKind = useSessionStore((state) => state.selectedSourceKind);
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
   const dungeonSeed = useDungeonStore((state) => state.seed);
   const setSeed = useDungeonStore((state) => state.setSeed);
@@ -51,8 +59,23 @@ export function AppShell() {
 
   const handleLoadAndStart = useCallback((repos: GitHubRepoSummary[], username: string) => {
     restartDungeonWithRepos(repos, username);
+    setSelectedSourceKind('github');
+    localStorage.setItem(
+      STORAGE_KEYS.selectedSource,
+      serializeSourceIdentityForStorage({ kind: 'github', username }),
+    );
     setShowWelcome(false);
-  }, [restartDungeonWithRepos]);
+  }, [restartDungeonWithRepos, setSelectedSourceKind]);
+
+  const handleLoadLocalAndStart = useCallback((repos: GitHubRepoSummary[], source: LocalSourceSelection) => {
+    restartDungeonWithRepos(repos, source.rootLabel);
+    setSelectedSourceKind('local');
+    localStorage.setItem(
+      STORAGE_KEYS.selectedSource,
+      serializeSourceIdentityForStorage({ kind: 'local', rootId: source.rootId }),
+    );
+    setShowWelcome(false);
+  }, [restartDungeonWithRepos, setSelectedSourceKind]);
 
   useEffect(() => {
     if (!hostRef.current) {
@@ -69,16 +92,72 @@ export function AppShell() {
   }, []);
 
   useEffect(() => {
+    try {
+      const rawSelectedSource = localStorage.getItem(STORAGE_KEYS.selectedSource);
+      if (!rawSelectedSource) {
+        setSelectedSourceKind('github');
+        return;
+      }
+
+      const parsedSource = parseSourceIdentityFromStorage(rawSelectedSource);
+      if (!parsedSource) {
+        setSelectedSourceKind('github');
+        return;
+      }
+
+      if (parsedSource.kind === 'github') {
+        setSelectedSourceKind('github');
+        setUsernameInput(parsedSource.username);
+        return;
+      }
+
+      if (parsedSource.kind === 'local' && localRepoAccess.isLocalRepoModeAvailable) {
+        setSelectedSourceKind('local');
+        return;
+      }
+
+      setSelectedSourceKind('github');
+    } catch {
+      setSelectedSourceKind('github');
+    }
+  }, [localRepoAccess.isLocalRepoModeAvailable, setSelectedSourceKind, setUsernameInput]);
+
+  useEffect(() => {
+    try {
+      if (selectedSourceKind === 'local') {
+        if (!localRepoAccess.isLocalRepoModeAvailable) {
+          setSelectedSourceKind('github');
+          return;
+        }
+        return;
+      }
+
+      const trimmedUsername = usernameInput.trim();
+      if (!trimmedUsername) {
+        return;
+      }
+
+      localStorage.setItem(
+        STORAGE_KEYS.selectedSource,
+        serializeSourceIdentityForStorage({ kind: 'github', username: trimmedUsername }),
+      );
+    } catch {
+      // ignore localStorage write failures
+    }
+  }, [localRepoAccess.isLocalRepoModeAvailable, selectedSourceKind, setSelectedSourceKind, usernameInput]);
+
+  useEffect(() => {
     const sharedState = decodeShareableDungeonUrl(window.location.href);
     if (!sharedState) {
       return;
     }
 
+    setSelectedSourceKind('github');
     setUsernameInput(sharedState.username);
     if (sharedState.seed) {
       setSeed(sharedState.seed);
     }
-  }, [setSeed, setUsernameInput]);
+  }, [setSeed, setSelectedSourceKind, setUsernameInput]);
 
   // H key toggles help from anywhere (but not when typing in an input)
   useEffect(() => {
@@ -122,7 +201,13 @@ export function AppShell() {
           </>
         )}
         {showWelcome && (
-          <WelcomeScreen onStart={handleStart} onLoadAndStart={handleLoadAndStart} onHelp={openHelp} />
+          <WelcomeScreen
+            onStart={handleStart}
+            onLoadAndStart={handleLoadAndStart}
+            onLoadLocalAndStart={handleLoadLocalAndStart}
+            onHelp={openHelp}
+            localRepoAccess={localRepoAccess}
+          />
         )}
         {showHelp && <HelpOverlay onClose={closeHelp} />}
         <p className="overlay">Repo Dungeon</p>

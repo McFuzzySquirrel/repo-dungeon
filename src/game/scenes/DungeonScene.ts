@@ -39,6 +39,14 @@ const CAMERA_BASE_ZOOM_MAX = 2.4;
 const CAMERA_CORRIDOR_ZOOM_MULTIPLIER = 0.94;
 const CAMERA_ROOM_PADDING = 112;
 
+function shouldUseSvgWorldSpritesRuntime(): boolean {
+  if (typeof navigator === 'undefined') {
+    return true;
+  }
+
+  return /Firefox\//iu.test(navigator.userAgent);
+}
+
 interface NavigationRegion {
   minX: number;
   minY: number;
@@ -100,6 +108,7 @@ export class DungeonScene extends Phaser.Scene {
   private cameraZoomTween: Phaser.Tweens.Tween | null = null;
   private selectedPlayerClass: PlayerClass = 'explorer';
   private playerClassUnsubscribe: (() => void) | null = null;
+  private useSvgWorldSprites = true;
   private virtualDirectionState: VirtualDirectionState = {
     up: false,
     down: false,
@@ -113,8 +122,25 @@ export class DungeonScene extends Phaser.Scene {
 
   preload(): void {
     this.reducedMotion = isReducedMotionPreferred();
+    this.useSvgWorldSprites = shouldUseSvgWorldSpritesRuntime();
+    this.attachLoaderDiagnostics();
     this.preloadVisualAssets();
     this.preloadAmbientAudioHooks();
+  }
+
+  private attachLoaderDiagnostics(): void {
+    if (!import.meta.env.DEV) {
+      return;
+    }
+
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
+      // Keep this concise and actionable for diagnosing bad texture data in browser consoles.
+      console.warn('[DungeonScene] Asset load error', {
+        key: file.key,
+        type: file.type,
+        src: file.src,
+      });
+    });
   }
 
   create(data: { repos?: GitHubRepoSummary[]; username?: string; seed?: string } = {}): void {
@@ -444,12 +470,20 @@ export class DungeonScene extends Phaser.Scene {
       const progress = Phaser.Math.Linear(startProgress, endProgress, localProgress);
       const x = Phaser.Math.Linear(from.x, to.x, progress);
       const y = Phaser.Math.Linear(from.y, to.y, progress);
+      const straightTexture = getPathwaySprite('straight').textureKey;
+
+      if (!this.useSvgWorldSprites || !this.textures.exists(straightTexture)) {
+        this.add
+          .rectangle(x, y, PATHWAY_JOINT_SIZE, PATHWAY_WIDTH, tint, alpha)
+          .setStrokeStyle(1, 0x2d3238, 0.9)
+          .setRotation(isVertical ? Math.PI / 2 : 0);
+        continue;
+      }
 
       this.add
-        .image(x, y, getPathwaySprite('straight').textureKey)
+        .image(x, y, straightTexture)
         .setDisplaySize(PATHWAY_JOINT_SIZE, PATHWAY_WIDTH)
         .setRotation(isVertical ? Math.PI / 2 : 0)
-        .setTint(tint)
         .setAlpha(alpha);
     }
   }
@@ -473,11 +507,18 @@ export class DungeonScene extends Phaser.Scene {
     const textureKey = getPathwaySprite(kind).textureKey;
     const rotation = this.getPathwayNodeRotation(kind, directions);
 
+    if (!this.useSvgWorldSprites || !this.textures.exists(textureKey)) {
+      this.add
+        .circle(current.x, current.y, PATHWAY_JOINT_SIZE * 0.24, tint, alpha)
+        .setStrokeStyle(1, 0x2d3238, 0.9)
+        .setRotation(rotation);
+      return;
+    }
+
     this.add
       .image(current.x, current.y, textureKey)
       .setDisplaySize(PATHWAY_JOINT_SIZE, PATHWAY_JOINT_SIZE)
       .setRotation(rotation)
-      .setTint(tint)
       .setAlpha(alpha);
   }
 
@@ -669,9 +710,9 @@ export class DungeonScene extends Phaser.Scene {
       const zone = room.zoneId ? this.zoneById.get(room.zoneId) : null;
       const biomeId = zone?.biome.id ?? 'lost-archive';
 
-      const roomObjects = RoomObject.spawnForRoom(this, room, biomeId, this.reducedMotion);
+      const roomObjects = RoomObject.spawnForRoom(this, room, biomeId, this.reducedMotion, true);
       const contributors = room.type === 'repo'
-        ? NPCContributor.spawnForRoom(this, room, biomeId, this.reducedMotion)
+        ? NPCContributor.spawnForRoom(this, room, this.reducedMotion)
         : [];
 
       roomObjects.forEach((obj) => obj.setVisible(false));
@@ -930,8 +971,10 @@ export class DungeonScene extends Phaser.Scene {
       }
     }
 
-    for (const sprite of getAllPathwaySprites()) {
-      this.load.image(sprite.textureKey, sprite.assetPath);
+    if (this.useSvgWorldSprites) {
+      for (const sprite of getAllPathwaySprites()) {
+        this.load.image(sprite.textureKey, sprite.assetPath);
+      }
     }
 
     for (const sprite of getAllPlayerClassSprites()) {
@@ -943,11 +986,13 @@ export class DungeonScene extends Phaser.Scene {
     }
 
     this.load.image('sprite-player', resolveAssetPath('/assets/sprites/player.svg'));
-    this.load.image('sprite-door', resolveAssetPath('/assets/sprites/door.svg'));
-    this.load.image('sprite-signpost', resolveAssetPath('/assets/sprites/signpost.svg'));
     this.load.image('sprite-object-readme-scroll', resolveAssetPath('/assets/sprites/objects/readme-scroll.svg'));
     this.load.image('sprite-object-file-tree-archive', resolveAssetPath('/assets/sprites/objects/file-tree-archive.svg'));
     this.load.image('sprite-object-contributors-gallery', resolveAssetPath('/assets/sprites/objects/contributors-gallery.svg'));
+    if (this.useSvgWorldSprites) {
+      this.load.image('sprite-door', resolveAssetPath('/assets/sprites/door.svg'));
+    }
+    this.load.image('sprite-signpost', resolveAssetPath('/assets/sprites/signpost.svg'));
   }
 
   private updateAmbientForBiome(biomeId?: string): void {
@@ -1028,6 +1073,14 @@ export class DungeonScene extends Phaser.Scene {
   }
 
   private drawDoorAt(anchor: DoorAnchor): void {
+    if (!this.useSvgWorldSprites || !this.textures.exists('sprite-door')) {
+      const fallbackDoor = this.add.rectangle(anchor.x, anchor.y, 12, 16, 0x7a5230, 0.96);
+      fallbackDoor.setStrokeStyle(1, 0xc59a6f, 0.95);
+      fallbackDoor.setRotation(anchor.rotation);
+      fallbackDoor.setDepth(8);
+      return;
+    }
+
     this.add
       .image(anchor.x, anchor.y, 'sprite-door')
       .setDisplaySize(12, 16)

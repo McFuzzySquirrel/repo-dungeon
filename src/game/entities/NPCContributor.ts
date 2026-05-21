@@ -6,7 +6,6 @@ import {
   createDeterministicOffsets,
   type ContributorNPCData,
 } from '@/game/entities/roomContent';
-import { getBiomePresentation } from '@/game/config/biomePresentation';
 
 export interface ContributorInteractionPayload {
   roomId: string;
@@ -34,10 +33,11 @@ export class NPCContributor extends Phaser.Physics.Arcade.Sprite {
     y: number,
     room: DungeonRoomNode,
     contributor: ContributorNPCData,
-    biomeId: string,
     reducedMotion: boolean,
   ) {
-    super(scene, x, y, getNpcSpriteForSeed(contributor.id).textureKey);
+    const preferredTextureKey = getNpcSpriteForSeed(contributor.id).textureKey;
+    const textureKey = scene.textures.exists(preferredTextureKey) ? preferredTextureKey : 'sprite-player';
+    super(scene, x, y, textureKey);
     scene.add.existing(this);
     scene.physics.add.existing(this);
 
@@ -52,9 +52,7 @@ export class NPCContributor extends Phaser.Physics.Arcade.Sprite {
       idleMs: reducedMotion ? 2200 : 1200,
     };
 
-    const palette = getBiomePresentation(biomeId).palette;
     this.setDisplaySize(18, 18);
-    this.setTint(palette.accent);
     this.setAlpha(0.9);
     this.pickNextTarget();
   }
@@ -105,7 +103,6 @@ export class NPCContributor extends Phaser.Physics.Arcade.Sprite {
   static spawnForRoom(
     scene: Phaser.Scene,
     room: DungeonRoomNode,
-    biomeId: string,
     reducedMotion: boolean,
   ): NPCContributor[] {
     const data = buildContributorNPCData(room);
@@ -119,7 +116,6 @@ export class NPCContributor extends Phaser.Physics.Arcade.Sprite {
         room.position.y + offset.y,
         room,
         contributor,
-        biomeId,
         reducedMotion,
       );
     });

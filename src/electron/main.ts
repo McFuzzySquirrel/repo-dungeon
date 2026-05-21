@@ -6,6 +6,7 @@ import {
   removeSecureStorageItem,
   setSecureStorageItem,
 } from './secureStorage.js';
+import { registerLocalRepoHandlers } from './localRepos.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -41,7 +42,7 @@ async function createMainWindow(): Promise<void> {
       preload: path.join(__dirname, 'preload.js'),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
       webSecurity: true,
       devTools: isDev,
     },
@@ -64,12 +65,13 @@ async function createMainWindow(): Promise<void> {
   if (isDev && devServerUrl) {
     await window.loadURL(devServerUrl);
   } else {
-    await window.loadFile(path.resolve(__dirname, '..', '..', 'dist', 'index.html'));
+    await window.loadFile(path.resolve(__dirname, '..', 'dist', 'index.html'));
   }
 }
 
 void app.whenReady().then(async () => {
   registerSecureStorageHandlers();
+  registerLocalRepoHandlers();
   await createMainWindow();
 
   app.on('activate', () => {
