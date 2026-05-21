@@ -55,9 +55,9 @@ describe('getLocalRepoAccessState', () => {
           protocol: 'http:',
           hostname: '127.0.0.1',
         },
-        showDirectoryPicker: async () => {
-          throw new Error("Failed to execute 'showDirectoryPicker' on 'Window': Intercepted by Page.setInterceptFileChooserDialog().");
-        },
+        showDirectoryPicker: () => Promise.reject(
+          new Error("Failed to execute 'showDirectoryPicker' on 'Window': Intercepted by Page.setInterceptFileChooserDialog()."),
+        ),
       },
       configurable: true,
     });

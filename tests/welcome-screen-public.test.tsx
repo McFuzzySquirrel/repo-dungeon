@@ -296,7 +296,7 @@ describe('WelcomeScreen public-only UX', () => {
     useSessionStore.setState({ selectedSourceKind: 'local' });
     const loadResult = makeLocalLoadResult();
     const onLoadLocalAndStart = vi.fn();
-    const pickAndScan = vi.fn(async () => loadResult);
+    const pickAndScan = vi.fn(() => Promise.resolve(loadResult));
     mockUseRepositorySource.mockReturnValue(
       makeRepositorySource({
         status: 'idle',

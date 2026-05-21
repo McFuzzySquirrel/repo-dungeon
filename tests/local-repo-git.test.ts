@@ -4,9 +4,7 @@ import { readGitMetadata, type GitCommandRunner } from '@/localRepos/git';
 describe('readGitMetadata', () => {
   it('returns graceful fallback metadata when git CLI is unavailable', async () => {
     const unavailableRunner: GitCommandRunner = {
-      run: async () => {
-        throw new Error('git missing');
-      },
+      run: () => Promise.reject(new Error('git missing')),
     };
 
     const metadata = await readGitMetadata('/tmp/repo', unavailableRunner);
@@ -18,30 +16,30 @@ describe('readGitMetadata', () => {
 
   it('extracts git metadata when git CLI commands succeed', async () => {
     const runner: GitCommandRunner = {
-      run: async (args) => {
+      run: (args) => {
         const command = args.join(' ');
         if (command === '--version') {
-          return { stdout: 'git version 2.45.0', stderr: '' };
+          return Promise.resolve({ stdout: 'git version 2.45.0', stderr: '' });
         }
         if (command === 'rev-parse --abbrev-ref HEAD') {
-          return { stdout: 'main\n', stderr: '' };
+          return Promise.resolve({ stdout: 'main\n', stderr: '' });
         }
         if (command === 'remote -v') {
-          return { stdout: 'origin\thttps://github.com/org/repo.git (fetch)\n', stderr: '' };
+          return Promise.resolve({ stdout: 'origin\thttps://github.com/org/repo.git (fetch)\n', stderr: '' });
         }
         if (command === 'rev-list --count HEAD') {
-          return { stdout: '42\n', stderr: '' };
+          return Promise.resolve({ stdout: '42\n', stderr: '' });
         }
         if (command === 'log -1 --format=%cI') {
-          return { stdout: '2026-05-21T12:30:00Z\n', stderr: '' };
+          return Promise.resolve({ stdout: '2026-05-21T12:30:00Z\n', stderr: '' });
         }
         if (command === 'status --porcelain') {
-          return { stdout: ' M src/index.ts\n', stderr: '' };
+          return Promise.resolve({ stdout: ' M src/index.ts\n', stderr: '' });
         }
         if (command === 'shortlog -s -n --all') {
-          return { stdout: '   10\tAlice\n    3\tBob\n', stderr: '' };
+          return Promise.resolve({ stdout: '   10\tAlice\n    3\tBob\n', stderr: '' });
         }
-        throw new Error(`Unexpected command: ${command}`);
+        return Promise.reject(new Error(`Unexpected command: ${command}`));
       },
     };
 

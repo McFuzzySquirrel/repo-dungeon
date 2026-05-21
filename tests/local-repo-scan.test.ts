@@ -11,11 +11,11 @@ class FakeFileHandle {
     private readonly content = '',
   ) {}
 
-  async getFile(): Promise<{ text: () => Promise<string> }> {
+  getFile(): Promise<{ text: () => Promise<string> }> {
     const text = this.content;
-    return {
-      text: async () => text,
-    };
+    return Promise.resolve({
+      text: () => Promise.resolve(text),
+    });
   }
 }
 
@@ -28,6 +28,7 @@ class FakeDirectoryHandle {
   ) {}
 
   async *entries(): AsyncGenerator<[string, FakeEntry], void, void> {
+    await Promise.resolve();
     for (const [name, child] of Object.entries(this.children)) {
       yield [name, child];
     }

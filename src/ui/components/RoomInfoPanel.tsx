@@ -653,7 +653,9 @@ export function RoomInfoPanel() {
                       <button
                         type="button"
                         className="room-info-retry"
-                        onClick={() => handleLocalPathOpen(localRoom.presentation.actions.openRepositoryInSystemDefault, 'system-default')}
+                        onClick={() => {
+                          void handleLocalPathOpen(localRoom.presentation.actions.openRepositoryInSystemDefault, 'system-default');
+                        }}
                         disabled={state.isLaunchingLocalPath || !localOpenActionsAvailable}
                       >
                         Open Repository
@@ -661,7 +663,9 @@ export function RoomInfoPanel() {
                       <button
                         type="button"
                         className="room-info-retry"
-                        onClick={() => handleLocalPathOpen(localRoom.presentation.actions.openRepositoryInPreferredEditor, 'preferred-editor')}
+                        onClick={() => {
+                          void handleLocalPathOpen(localRoom.presentation.actions.openRepositoryInPreferredEditor, 'preferred-editor');
+                        }}
                         disabled={state.isLaunchingLocalPath || !localOpenActionsAvailable}
                       >
                         Open in Editor

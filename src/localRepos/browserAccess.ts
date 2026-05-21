@@ -358,13 +358,13 @@ export const trustedLocalBrowserAccess: LocalRepoAccessApi = {
     });
   },
 
-  async openPath(request: LocalRoomLaunchRequest): Promise<LocalRoomLaunchResult> {
-    return {
+  openPath(request: LocalRoomLaunchRequest): Promise<LocalRoomLaunchResult> {
+    return Promise.resolve({
       ok: false,
       mode: request.mode,
       fallbackUsed: false,
       message: 'Opening local filesystem paths is only supported in the Electron desktop app.',
-    };
+    });
   },
 
   async loadReadme(request: LocalReadmeLoadRequest): Promise<LocalReadmeLoadResult> {

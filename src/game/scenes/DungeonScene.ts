@@ -135,7 +135,6 @@ export class DungeonScene extends Phaser.Scene {
 
     this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
       // Keep this concise and actionable for diagnosing bad texture data in browser consoles.
-      // eslint-disable-next-line no-console
       console.warn('[DungeonScene] Asset load error', {
         key: file.key,
         type: file.type,

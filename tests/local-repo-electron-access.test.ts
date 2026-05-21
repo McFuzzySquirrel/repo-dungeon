@@ -31,12 +31,10 @@ describe('electron local repo access launch wrapper', () => {
     Object.defineProperty(globalThis, 'window', {
       value: {
         electronLocalRepos: {
-          pickParentFolder: async () => null,
-          scanParentFolder: async () => {
-            throw new Error('not expected');
-          },
+          pickParentFolder: () => Promise.resolve(null),
+          scanParentFolder: () => Promise.reject(new Error('not expected')),
           subscribeScanProgress: () => () => {},
-          loadReadme: async () => ({
+          loadReadme: () => Promise.resolve({
             readme: {
               fileName: 'README.md',
               plainText: 'hello',
@@ -44,7 +42,7 @@ describe('electron local repo access launch wrapper', () => {
             },
             unavailableReason: null,
           }),
-          openPath: async () => ({
+          openPath: () => Promise.resolve({
             ok: true,
             mode: 'preferred-editor',
             fallbackUsed: false,

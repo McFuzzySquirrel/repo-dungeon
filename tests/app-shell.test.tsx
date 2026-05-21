@@ -6,6 +6,8 @@ import { useSessionStore } from '@/store/sessionStore';
 import { STORAGE_KEYS } from '@/store/persistence';
 
 type CreateGame = typeof import('@/game/createGame').createGame;
+type DecodeShareableDungeonUrl = typeof import('@/ui/systems/shareUrl').decodeShareableDungeonUrl;
+type GetLocalRepoAccessState = typeof import('@/localRepos/browserAccess').getLocalRepoAccessState;
 
 const { mockCreateGame } = vi.hoisted(() => ({
   mockCreateGame: vi.fn(),
@@ -55,11 +57,13 @@ vi.mock('@/ui/components/WelcomeScreen', () => ({
   ),
 }));
 vi.mock('@/ui/systems/shareUrl', () => ({
-  decodeShareableDungeonUrl: (...args: unknown[]) => mockDecodeShareableDungeonUrl(...args),
+  decodeShareableDungeonUrl: (...args: Parameters<DecodeShareableDungeonUrl>): ReturnType<DecodeShareableDungeonUrl> =>
+    mockDecodeShareableDungeonUrl(...args) as ReturnType<DecodeShareableDungeonUrl>,
 }));
 
 vi.mock('@/localRepos/browserAccess', () => ({
-  getLocalRepoAccessState: () => mockGetLocalRepoAccessState(),
+  getLocalRepoAccessState: (): ReturnType<GetLocalRepoAccessState> =>
+    mockGetLocalRepoAccessState() as ReturnType<GetLocalRepoAccessState>,
 }));
 
 describe('AppShell', () => {
