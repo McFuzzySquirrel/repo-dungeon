@@ -36,6 +36,14 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 - **Section 17 — Acceptance Criteria**: Final release gate checklist
 - **Section 18 — Dependencies and Risks**: High-risk failure modes to prioritize in regression suites
 
+For the Local Repository Dungeon Generation feature, also consult [docs/features/FT-local-repo-dungeons.md](../../docs/features/FT-local-repo-dungeons.md):
+
+- **Section 6 — Functional Requirements**: FT-FR-01 through FT-FR-17 feature verification scope
+- **Section 7 — Non-Functional Requirements**: Local-access security, responsiveness, and accessibility expectations
+- **Section 9 — Implementation Phases**: F4 validation and rollout-hardening tasks
+- **Section 10 — Testing Strategy**: Feature-specific unit, integration, and regression scenarios
+- **Section 12 — Acceptance Criteria**: Local-mode completion and regression gate expectations
+
 ---
 
 ## Responsibilities
@@ -57,6 +65,12 @@ Always consult [docs/PRD.md](../../docs/PRD.md) for the authoritative project re
 7. Verify security-sensitive flows such as token storage, logout, noopener links, plain-text README rendering, and no-telemetry behavior.
 8. Verify NF-01 through NF-09, ACC-01 through ACC-08, and the Section 17 acceptance criteria through automated or documented manual coverage.
 9. Report coverage gaps early so the orchestrator can route fixes to the correct specialist owner.
+
+### Local Repository Feature Verification (`tests/`, Electron/browser integration coverage)
+
+10. Build the unit, integration, and regression coverage required for FT-FR-01 through FT-FR-17, including hosted-build gating, local scan flows, git CLI fallback, basement exploration, and launch-action safety.
+11. Verify the feature's local-only security guarantees, especially that hosted deployments cannot browse folders and share surfaces do not leak filesystem references.
+12. Extend release-ready manual validation to cover trusted local browser environments, Electron local access, and degraded permission or missing-git scenarios.
 
 ---
 
@@ -104,6 +118,7 @@ When executing your responsibilities:
 - **project-architect** — Supplies scripts, shared configuration, and test-runner integration points
 - **github-platform-engineer** — Receives auth, API, caching, and security regression findings
 - **dungeon-generation-engineer** — Receives deterministic generation, topology, and performance findings
+- **local-repo-platform-engineer** — Receives local scan, permission, git CLI, and launch-action regression findings
 - **phaser-gameplay-engineer** — Receives gameplay interaction, movement, and runtime-state findings
 - **ui-experience-engineer** — Receives component, accessibility, and responsive-layout findings
 - **progression-rewards-engineer** — Receives reward-rule, persistence, and badge-trigger findings

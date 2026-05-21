@@ -95,6 +95,62 @@
   text-align: left;
 }
 
+.welcome-source-picker {
+  width: 100%;
+  max-width: 480px;
+  border: 1px solid rgba(200, 216, 232, 0.2);
+  border-radius: 8px;
+  padding: 0.7rem 0.8rem 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.welcome-source-legend {
+  font-family: monospace;
+  font-size: 0.78rem;
+  color: #6a8aa0;
+  padding: 0 0.35rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.welcome-source-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.55rem;
+}
+
+.welcome-source-option {
+  border: 1px solid rgba(200, 216, 232, 0.25);
+  background: rgba(0, 0, 0, 0.32);
+  color: #c8d8e8;
+  border-radius: 6px;
+  font-family: monospace;
+  font-size: 0.82rem;
+  padding: 0.55rem 0.65rem;
+  cursor: pointer;
+  text-align: center;
+}
+
+.welcome-source-option.is-active {
+  border-color: rgba(99, 245, 255, 0.7);
+  box-shadow: 0 0 0 1px rgba(99, 245, 255, 0.22);
+  color: #e8f4ff;
+}
+
+.welcome-source-option:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.welcome-source-note {
+  margin: 0.65rem 0 0;
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: #82a8bc;
+  line-height: 1.45;
+  text-align: left;
+}
+
 .feature-icon {
   font-size: 1.1rem;
   flex-shrink: 0;
@@ -225,6 +281,12 @@
   gap: 0.6rem;
 }
 
+.welcome-local-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+
 .welcome-username-input {
   flex: 1;
   min-width: 0;
@@ -338,4 +400,10 @@
   color: #4a6480;
   max-width: 360px;
   line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .welcome-source-options {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }

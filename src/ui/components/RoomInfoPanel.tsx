@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from 'react';
+import { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { useGameScene, useOnRoomEntered, useOnRoomObjectInteracted } from '@/ui/context/GameContext';
 import { GitHubApiClient, createGitHubApiClient, GitHubApiError } from '@/github/api';
 import {
@@ -9,20 +9,41 @@ import {
   type RoomDetailEtags,
 } from '@/github/cache';
 import { useProgressionStore } from '@/store/progressionStore';
+import { STORAGE_KEYS } from '@/store/persistence';
+import { parseSourceIdentityFromStorage } from '@/repository/source';
+import { loadLocalScanCache, loadLocalSourceSelection } from '@/localRepos/cache';
+import { buildLocalRoomPresentationData } from '@/localRepos/metadata';
+import { electronLocalRepoAccess } from '@/localRepos/electronAccess';
+import { getLocalRepoAccessState, trustedLocalBrowserAccess } from '@/localRepos/browserAccess';
+import type {
+  LocalPreferredEditorConfig,
+  LocalRepoAccessApi,
+  LocalRepoScanCandidate,
+  LocalRoomLaunchMode,
+  LocalRoomPresentationData,
+} from '@/localRepos/types';
 import { getVisitedStampsSystem } from '@/ui/systems/VisitedStamps';
 import type { RoomEnteredEvent } from '@/ui/context/GameContext';
 import type { GitHubReadmePayload, GitHubRepoSummary, GitHubRoomData } from '@/github/types';
+import { BasementExplorer } from '@/ui/components/BasementExplorer';
 import '@/ui/styles/room-info.css';
 
 type TabType = 'overview' | 'readme' | 'files' | 'contributors';
 
+interface LocalRoomPanelData {
+  candidate: LocalRepoScanCandidate;
+  presentation: LocalRoomPresentationData;
+}
+
 interface PanelState {
   isOpen: boolean;
+  isLocalRoom: boolean;
   currentRoomId: string | null;
   currentRoomName: string;
   isLoading: boolean;
   error: string | null;
   data: GitHubRoomData | null;
+  localRoom: LocalRoomPanelData | null;
   /** Per-endpoint ETags from the most recently loaded snapshot, used for lazy revalidation. */
   etags: RoomDetailEtags;
   /** Set of deferred endpoints currently being lazy-fetched. */
@@ -30,6 +51,18 @@ interface PanelState {
   activeTab: TabType;
   currentOwner: string | null;
   currentRepoName: string | null;
+  isLaunchingLocalPath: boolean;
+  localLaunchMessage: string | null;
+  localLaunchMessageKind: 'info' | 'error';
+  isLocalReadmeModalOpen: boolean;
+  isLocalReadmeLoading: boolean;
+  localReadmeLoadedFromSource: boolean;
+  localReadmeError: string | null;
+  localReadmeContent: {
+    fileName: string;
+    plainText: string;
+    truncated: boolean;
+  } | null;
 }
 
 /**
@@ -41,21 +74,33 @@ export function RoomInfoPanel() {
   const incrementGitHubLinkClicks = useProgressionStore((state) => state.incrementGitHubLinkClicks);
   const [state, setState] = useState<PanelState>({
     isOpen: false,
+    isLocalRoom: false,
     currentRoomId: null,
     currentRoomName: '',
     isLoading: false,
     error: null,
     data: null,
+    localRoom: null,
     etags: {},
     loadingDeferred: {},
     activeTab: 'overview',
     currentOwner: null,
     currentRepoName: null,
+    isLaunchingLocalPath: false,
+    localLaunchMessage: null,
+    localLaunchMessageKind: 'info',
+    isLocalReadmeModalOpen: false,
+    isLocalReadmeLoading: false,
+    localReadmeLoadedFromSource: false,
+    localReadmeError: null,
+    localReadmeContent: null,
   });
 
   const clientRef = useRef<GitHubApiClient | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const visitedStamps = getVisitedStampsSystem();
+  const preferredEditor = useMemo(() => loadPreferredEditorConfig(), []);
+  const localAccessState = useMemo(() => getLocalRepoAccessState(), []);
 
   // Initialize GitHub API client
   useEffect(() => {
@@ -79,22 +124,61 @@ export function RoomInfoPanel() {
           return;
         }
 
+        if (isLocalRepoSummary(event.repo)) {
+          const localRoom = resolveLocalRoomPanelData(event.repo);
+          setState((prev) => ({
+            ...prev,
+            isOpen: true,
+            isLocalRoom: true,
+            currentRoomId: event.roomId,
+            currentRoomName: event.roomName,
+            isLoading: false,
+            error: localRoom ? null : 'Local room metadata is unavailable. Re-scan the selected folder and try again.',
+            data: null,
+            localRoom,
+            etags: {},
+            loadingDeferred: {},
+            activeTab: 'overview',
+            currentOwner: null,
+            currentRepoName: null,
+            isLaunchingLocalPath: false,
+            localLaunchMessage: null,
+            localLaunchMessageKind: 'info',
+            isLocalReadmeModalOpen: false,
+            isLocalReadmeLoading: false,
+            localReadmeLoadedFromSource: false,
+            localReadmeError: null,
+            localReadmeContent: localRoom?.candidate.readmePreview ?? null,
+          }));
+          return;
+        }
+
         // Check if we have cached data
         const cached = getRoomDetails(event.roomId);
 
         setState((prev) => ({
           ...prev,
           isOpen: true,
+          isLocalRoom: false,
           currentRoomId: event.roomId,
           currentRoomName: event.roomName,
           isLoading: !cached,
           error: null,
           data: cached || null,
+          localRoom: null,
           etags: {},
           loadingDeferred: {},
           activeTab: 'overview',
           currentOwner: (event.repo?.owner as string | undefined) ?? (event.repo?.ownerLogin as string | undefined) ?? null,
           currentRepoName: (event.repo?.name as string | undefined) ?? null,
+          isLaunchingLocalPath: false,
+          localLaunchMessage: null,
+          localLaunchMessageKind: 'info',
+          isLocalReadmeModalOpen: false,
+          isLocalReadmeLoading: false,
+          localReadmeLoadedFromSource: false,
+          localReadmeError: null,
+          localReadmeContent: null,
         }));
 
         // Fetch detailed data if not cached
@@ -119,9 +203,14 @@ export function RoomInfoPanel() {
           'contributors-gallery': 'contributors',
         };
 
+        const nextTab = activeTabByObject[event.objectType];
+        if (prev.isLocalRoom && nextTab === 'contributors') {
+          return prev;
+        }
+
         return {
           ...prev,
-          activeTab: activeTabByObject[event.objectType],
+          activeTab: nextTab,
         };
       });
     }, []),
@@ -282,6 +371,103 @@ export function RoomInfoPanel() {
     if (state.activeTab === 'contributors') ensureContributorsLoaded();
   }, [state.activeTab, state.data, ensureReadmeLoaded, ensureContributorsLoaded]);
 
+  const handleLocalPathOpen = useCallback(
+    async (request: {
+      rootPathToken: string;
+      repositoryPathToken: string;
+      targetPathToken?: string;
+    }, mode: LocalRoomLaunchMode) => {
+      const accessApi = resolveLocalRoomAccessApi();
+      if (!accessApi) {
+        setState((prev) => ({
+          ...prev,
+          localLaunchMessageKind: 'error',
+          localLaunchMessage: 'Opening local paths is unavailable in this runtime.',
+        }));
+        return;
+      }
+
+      setState((prev) => ({
+        ...prev,
+        isLaunchingLocalPath: true,
+        localLaunchMessage: null,
+        localLaunchMessageKind: 'info',
+      }));
+
+      try {
+        const result = await accessApi.openPath({
+          ...request,
+          mode,
+          preferredEditor: mode === 'preferred-editor' ? preferredEditor : undefined,
+        });
+
+        const message = result.ok
+          ? result.fallbackUsed
+            ? 'Opened with the system default application after preferred editor fallback.'
+            : 'Path opened successfully.'
+          : 'Unable to open the selected path.';
+
+        setState((prev) => ({
+          ...prev,
+          isLaunchingLocalPath: false,
+          localLaunchMessageKind: result.ok ? 'info' : 'error',
+          localLaunchMessage: message,
+        }));
+      } catch {
+        setState((prev) => ({
+          ...prev,
+          isLaunchingLocalPath: false,
+          localLaunchMessageKind: 'error',
+          localLaunchMessage: 'Unable to open the selected path.',
+        }));
+      }
+    },
+    [preferredEditor],
+  );
+
+  const handleLoadLocalReadme = useCallback(async () => {
+    const localRoom = state.localRoom;
+    if (!state.isLocalRoom || !localRoom) {
+      return;
+    }
+
+    const accessApi = resolveLocalRoomAccessApi();
+    if (!accessApi) {
+      setState((prev) => ({
+        ...prev,
+        localReadmeError: 'Local README loading is unavailable in this runtime.',
+      }));
+      return;
+    }
+
+    setState((prev) => ({
+      ...prev,
+      isLocalReadmeLoading: true,
+      localReadmeError: null,
+    }));
+
+    try {
+      const result = await accessApi.loadReadme({
+        rootPathToken: localRoom.candidate.rootPathToken,
+        repositoryPathToken: localRoom.presentation.repositoryPathToken,
+      });
+
+      setState((prev) => ({
+        ...prev,
+        isLocalReadmeLoading: false,
+        localReadmeLoadedFromSource: Boolean(result.readme),
+        localReadmeContent: result.readme ?? prev.localReadmeContent,
+        localReadmeError: result.readme ? null : (result.unavailableReason ?? 'Unable to load README.'),
+      }));
+    } catch {
+      setState((prev) => ({
+        ...prev,
+        isLocalReadmeLoading: false,
+        localReadmeError: 'Unable to load README.',
+      }));
+    }
+  }, [state.isLocalRoom, state.localRoom]);
+
   // Handle panel close
   const handleClose = useCallback(() => {
     if (state.currentRoomId) {
@@ -302,7 +488,7 @@ export function RoomInfoPanel() {
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [state.isOpen, handleClose]);
+  }, [state.isLocalReadmeModalOpen, state.isOpen, handleClose]);
 
   // Handle focus management when panel opens/closes
   useEffect(() => {
@@ -319,7 +505,9 @@ export function RoomInfoPanel() {
     return null;
   }
 
-  const { data, error, isLoading, activeTab, currentRoomName } = state;
+  const { data, error, isLoading, activeTab, currentRoomName, isLocalRoom, localRoom } = state;
+  const availableTabs = isLocalRoom ? (['overview', 'readme', 'files'] as const) : (['overview', 'readme', 'files', 'contributors'] as const);
+  const localOpenActionsAvailable = localAccessState.environment === 'electron';
 
   return (
     <div
@@ -345,7 +533,7 @@ export function RoomInfoPanel() {
             <h2 id="room-info-title" className="room-info-title">
               {currentRoomName}
             </h2>
-            {data && (
+            {data && !isLocalRoom && (
               <a
                 href={data.repo.htmlUrl}
                 target="_blank"
@@ -369,7 +557,7 @@ export function RoomInfoPanel() {
         </div>
 
         {/* Stats section (always visible) */}
-        {data && (
+        {data && !isLocalRoom && (
           <div className="room-info-stats">
             <div className="room-info-stat">
               <span className="stat-icon">⭐</span>
@@ -384,6 +572,25 @@ export function RoomInfoPanel() {
                 <span className="stat-label">{data.repo.language}</span>
               </div>
             )}
+          </div>
+        )}
+
+        {localRoom && isLocalRoom && (
+          <div className="room-info-stats">
+            <div className="room-info-stat">
+              <span className="stat-label">Files {localRoom.candidate.fileCount}</span>
+            </div>
+            <div className="room-info-stat">
+              <span className="stat-label">Folders {localRoom.candidate.directoryCount}</span>
+            </div>
+            <div className="room-info-stat">
+              <span className="stat-label">
+                Commits {localRoom.candidate.git.commitCount ?? 'N/A'}
+              </span>
+            </div>
+            <div className="room-info-stat">
+              <span className="stat-label">Branch {localRoom.candidate.git.branch ?? 'Unknown'}</span>
+            </div>
           </div>
         )}
 
@@ -406,10 +613,10 @@ export function RoomInfoPanel() {
         )}
 
         {/* Content tabs */}
-        {data && !isLoading && !error && (
+        {((data && !isLocalRoom) || (isLocalRoom && localRoom)) && !isLoading && !error && (
           <>
             <div className="room-info-tabs" role="tablist">
-              {(['overview', 'readme', 'files', 'contributors'] as const).map((tab) => (
+              {availableTabs.map((tab) => (
                 <button
                   key={tab}
                   className={`room-info-tab ${activeTab === tab ? 'active' : ''}`}
@@ -426,8 +633,195 @@ export function RoomInfoPanel() {
             </div>
 
             <div className="room-info-content">
+              {isLocalRoom && localRoom && activeTab === 'overview' && (
+                <div
+                  className="room-info-tab-panel"
+                  id="room-info-overview"
+                  role="tabpanel"
+                  aria-labelledby="room-info-tab-overview"
+                >
+                  <div className="room-info-section">
+                    <h3>Local Source</h3>
+                    <p>Source: {localRoom.candidate.rootLabel}</p>
+                    <p>Repository path: {localRoom.candidate.relativePath || localRoom.candidate.name}</p>
+                    <p>Discovered: {new Date(localRoom.candidate.discoveredAt).toLocaleString()}</p>
+                  </div>
+
+                  <div className="room-info-section">
+                    <h3>Launch Actions</h3>
+                    <div className="room-info-local-actions">
+                      <button
+                        type="button"
+                        className="room-info-retry"
+                        onClick={() => handleLocalPathOpen(localRoom.presentation.actions.openRepositoryInSystemDefault, 'system-default')}
+                        disabled={state.isLaunchingLocalPath || !localOpenActionsAvailable}
+                      >
+                        Open Repository
+                      </button>
+                      <button
+                        type="button"
+                        className="room-info-retry"
+                        onClick={() => handleLocalPathOpen(localRoom.presentation.actions.openRepositoryInPreferredEditor, 'preferred-editor')}
+                        disabled={state.isLaunchingLocalPath || !localOpenActionsAvailable}
+                      >
+                        Open in Editor
+                      </button>
+                    </div>
+                    {!localOpenActionsAvailable && (
+                      <p className="room-info-empty">
+                        Opening local filesystem paths is only available in the Electron desktop app.
+                      </p>
+                    )}
+                    {state.localLaunchMessage && (
+                      <p
+                        className={`room-info-launch-feedback room-info-launch-feedback-${state.localLaunchMessageKind}`}
+                        role="status"
+                        aria-live="polite"
+                      >
+                        {state.localLaunchMessage}
+                      </p>
+                    )}
+                  </div>
+
+                  <div className="room-info-section">
+                    <h3>Git Signals</h3>
+                    {localRoom.candidate.git.available ? (
+                      <>
+                        <p>
+                          Contributors:{' '}
+                          {localRoom.candidate.git.contributorCount ?? 'Unavailable in browser mode'}
+                        </p>
+                        <p>Last commit: {localRoom.candidate.git.lastCommitAt ?? 'Unknown'}</p>
+                        <p>Dirty working tree: {localRoom.candidate.git.isDirty ? 'Yes' : 'No'}</p>
+                        <p>Remotes discovered: {localRoom.candidate.git.remotes.length}</p>
+                      </>
+                    ) : (
+                      <p>{localRoom.candidate.git.unavailableReason || 'Git metadata is unavailable in this runtime.'}</p>
+                    )}
+                  </div>
+
+                  <div className="room-info-section">
+                    <h3>Contributor Notes</h3>
+                    <p>
+                      Local mode contributor NPCs in rooms are thematic placeholders unless full git contributor metadata is available.
+                    </p>
+                    <p>
+                      For accurate contributor counts and launch actions, use the Electron desktop app.
+                    </p>
+                  </div>
+
+                  {Object.keys(localRoom.candidate.languageBreakdown).length > 0 && (
+                    <div className="room-info-section">
+                      <h3>Languages</h3>
+                      <LanguageBar languages={localRoom.candidate.languageBreakdown} />
+                    </div>
+                  )}
+
+                  <div className="room-info-section">
+                    <h3>Project Signals</h3>
+                    <p>README: {localRoom.candidate.filesystem.hasReadme ? 'Present' : 'Not found'}</p>
+                    <p>License: {localRoom.candidate.filesystem.hasLicense ? 'Present' : 'Not found'}</p>
+                    <p>package.json: {localRoom.candidate.filesystem.hasPackageJson ? 'Present' : 'Not found'}</p>
+                    <p>TypeScript config: {localRoom.candidate.filesystem.hasTsConfig ? 'Present' : 'Not found'}</p>
+                    <p>Python project files: {localRoom.candidate.filesystem.hasPyProject ? 'Present' : 'Not found'}</p>
+                  </div>
+
+                </div>
+              )}
+
+              {isLocalRoom && localRoom && activeTab === 'readme' && (
+                <div
+                  className="room-info-tab-panel"
+                  id="room-info-readme"
+                  role="tabpanel"
+                  aria-labelledby="room-info-tab-readme"
+                >
+                  {state.localReadmeContent ? (
+                    <div className="room-info-readme">
+                      <p>
+                        {state.localReadmeLoadedFromSource
+                          ? state.localReadmeContent.plainText
+                          : state.localReadmeContent.plainText.substring(0, 1000)}
+                      </p>
+                      {state.localReadmeContent.truncated && !state.localReadmeLoadedFromSource && (
+                        <p className="room-info-truncated">[Truncated during local scan preview capture]</p>
+                      )}
+                    </div>
+                  ) : (
+                    <p className="room-info-empty">README content preview is unavailable for this repository.</p>
+                  )}
+
+                  {state.localReadmeError && <p className="room-info-empty">{state.localReadmeError}</p>}
+
+                  {localRoom.candidate.filesystem.hasReadme && !state.localReadmeLoadedFromSource && (
+                    <div className="room-info-section">
+                      <button
+                        type="button"
+                        className="room-info-retry"
+                        onClick={() => {
+                          void handleLoadLocalReadme();
+                        }}
+                        disabled={state.isLocalReadmeLoading}
+                      >
+                        {state.isLocalReadmeLoading ? 'Loading README…' : 'Load Full README'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {isLocalRoom && localRoom && activeTab === 'files' && (
+                <div
+                  className="room-info-tab-panel"
+                  id="room-info-files"
+                  role="tabpanel"
+                  aria-labelledby="room-info-tab-files"
+                >
+                  <div className="room-info-section">
+                    <h3>Top-level Files</h3>
+                    {localRoom.candidate.topLevelTree.length > 0 ? (
+                      <div className="room-info-files">
+                        {localRoom.candidate.topLevelTree.slice(0, 30).map((entry) => (
+                          <div key={`${entry.type}:${entry.path}`} className={`room-info-file room-info-file-${entry.type}`}>
+                            <span className="file-icon">{entry.type === 'dir' ? '📁' : '📄'}</span>
+                            <span className="file-name">{entry.path}</span>
+                          </div>
+                        ))}
+                        {localRoom.candidate.topLevelTree.length > 30 && (
+                          <p className="room-info-truncated">+{localRoom.candidate.topLevelTree.length - 30} more entries</p>
+                        )}
+                      </div>
+                    ) : (
+                      <p className="room-info-empty">No top-level entries were captured for this repository.</p>
+                    )}
+                  </div>
+
+                  <BasementExplorer
+                    nodes={localRoom.presentation.basementNodes}
+                    isLaunching={state.isLaunchingLocalPath}
+                    onOpenPath={(node, mode) => {
+                      void handleLocalPathOpen(
+                        {
+                          ...node.openInSystemDefault,
+                        },
+                        mode,
+                      );
+                    }}
+                  />
+                  {state.localLaunchMessage && (
+                    <p
+                      className={`room-info-launch-feedback room-info-launch-feedback-${state.localLaunchMessageKind}`}
+                      role="status"
+                      aria-live="polite"
+                    >
+                      {state.localLaunchMessage}
+                    </p>
+                  )}
+                </div>
+              )}
+
               {/* Overview Tab */}
-              {activeTab === 'overview' && (
+              {!isLocalRoom && data && activeTab === 'overview' && (
                 <div
                   className="room-info-tab-panel"
                   id="room-info-overview"
@@ -464,7 +858,7 @@ export function RoomInfoPanel() {
               )}
 
               {/* README Tab */}
-              {activeTab === 'readme' && (
+              {!isLocalRoom && data && activeTab === 'readme' && (
                 <div
                   className="room-info-tab-panel"
                   id="room-info-readme"
@@ -488,7 +882,7 @@ export function RoomInfoPanel() {
               )}
 
               {/* Files Tab */}
-              {activeTab === 'files' && (
+              {!isLocalRoom && data && activeTab === 'files' && (
                 <div
                   className="room-info-tab-panel"
                   id="room-info-files"
@@ -514,7 +908,7 @@ export function RoomInfoPanel() {
               )}
 
               {/* Contributors Tab */}
-              {activeTab === 'contributors' && (
+              {!isLocalRoom && data && activeTab === 'contributors' && (
                 <div
                   className="room-info-tab-panel"
                   id="room-info-contributors"
@@ -569,6 +963,7 @@ export function RoomInfoPanel() {
             </div>
           </>
         )}
+
       </div>
     </div>
   );
@@ -635,6 +1030,114 @@ function LanguageBar({ languages }: { languages: Record<string, number> }) {
       </div>
     </div>
   );
+}
+
+function isLocalRepoSummary(repo: Record<string, unknown>): boolean {
+  const topics = Array.isArray(repo.topics) ? repo.topics : [];
+  if (topics.some((topic) => String(topic).toLowerCase() === 'local')) {
+    return true;
+  }
+
+  const htmlUrl = typeof repo.htmlUrl === 'string' ? repo.htmlUrl : '';
+  return htmlUrl.startsWith('file://');
+}
+
+function resolveLocalRoomPanelData(repo: Record<string, unknown>): LocalRoomPanelData | null {
+  const fullName = typeof repo.fullName === 'string' ? repo.fullName : '';
+  if (!fullName.includes('/')) {
+    return null;
+  }
+
+  const selectedSourceRaw = localStorage.getItem(STORAGE_KEYS.selectedSource);
+  if (!selectedSourceRaw) {
+    return null;
+  }
+
+  const selectedSource = parseSourceIdentityFromStorage(selectedSourceRaw);
+  if (!selectedSource || selectedSource.kind !== 'local') {
+    return null;
+  }
+
+  const localSelection = loadLocalSourceSelection();
+  if (!localSelection || localSelection.rootId !== selectedSource.rootId) {
+    return null;
+  }
+
+  const cachedScan = loadLocalScanCache(localSelection.rootId);
+  if (!cachedScan) {
+    return null;
+  }
+
+  const [rootLabel, ...pathParts] = fullName.split('/');
+  const relativePath = pathParts.join('/');
+  const candidate = cachedScan.scan.repositories.find((entry) => {
+    if (entry.rootLabel !== rootLabel) {
+      return false;
+    }
+
+    const expectedPath = entry.relativePath || entry.name;
+    return expectedPath === relativePath;
+  });
+
+  if (!candidate) {
+    return null;
+  }
+
+  const presentation = buildLocalRoomPresentationData(
+    {
+      rootPathToken: candidate.rootPathToken,
+      relativePath: candidate.relativePath,
+    },
+    candidate.relativeDirectoryPaths,
+    cachedScan.scan.ignoredFolders,
+  );
+
+  if (!presentation) {
+    return null;
+  }
+
+  return {
+    candidate,
+    presentation,
+  };
+}
+
+function resolveLocalRoomAccessApi(): LocalRepoAccessApi | null {
+  const localState = getLocalRepoAccessState();
+  if (!localState.isLocalRepoModeAvailable) {
+    return null;
+  }
+
+  if (localState.environment === 'electron') {
+    return electronLocalRepoAccess;
+  }
+
+  if (localState.environment === 'trusted-local-web') {
+    return trustedLocalBrowserAccess;
+  }
+
+  return null;
+}
+
+function loadPreferredEditorConfig(): LocalPreferredEditorConfig | null {
+  try {
+    const raw = localStorage.getItem('repo-dungeon:v1:preferred-editor');
+    if (!raw) {
+      return null;
+    }
+
+    const parsed = JSON.parse(raw) as LocalPreferredEditorConfig;
+    if (!parsed || typeof parsed.command !== 'string' || parsed.command.trim().length === 0) {
+      return null;
+    }
+
+    return {
+      command: parsed.command.trim(),
+      args: Array.isArray(parsed.args) ? parsed.args.filter((arg) => typeof arg === 'string') : undefined,
+    };
+  } catch {
+    return null;
+  }
 }
 
 /**

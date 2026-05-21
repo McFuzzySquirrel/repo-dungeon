@@ -4,19 +4,39 @@ Turn a GitHub profile into a playable dungeon crawler.
 
 Each repository becomes a room. You explore the dungeon, open room info panels, collect loot, unlock badges, and jump to GitHub when you find something interesting.
 
+### Welcome
+Want to load up some random or your own Github public repos? What about local repo exploration, its your choice!
+
 <img src="docs/screenshots/welcome-page.png" alt="Repo Dungeon welcome screen" width="720" />
 
-## Showcase
+### Select your class
+Get come specials!
 
-<img src="docs/screenshots/gameplay-overview.png" alt="Repo Dungeon exploration view with dungeon map, HUD rail, and minimap" width="720" />
+<img src="docs/screenshots/chooseyourclass.png" alt="Repo Dungeon class selection modal for choosing an explorer archetype" width="500" />
 
-<img src="docs/screenshots/class-select.png" alt="Repo Dungeon class selection modal for choosing an explorer archetype" width="720" />
+### Exploring
+Start exploring, learning and level up
 
-<img src="docs/screenshots/gameplay-hud-rail.png" alt="Repo Dungeon left-side HUD rail with XP progress and active class card" width="280" />
+<img src="docs/screenshots/gameplay.png" alt="Repo Dungeon exploration view with dungeon map, HUD rail, and minimap" width="500" />
+
+### Stats
+Your HUD with all the things you care about
+
+<img src="docs/screenshots/hud.png" alt="Repo Dungeon left-side HUD rail with XP progress and active class card" width="280" />
+
+### Collectables
+What did I get?
+
+<img src="docs/screenshots/inventorycollectables.png" alt="Repo Dungeon class selection modal for choosing an explorer archetype" width="500" />
+
+### Badges
+Well, we do care about reputation
+
+<img src="docs/screenshots/badges.png" alt="Repo Dungeon class selection modal for choosing an explorer archetype" width="500" />
 
 ## What you can do in-game
 
-- Generate a dungeon from GitHub repositories
+- Generate a dungeon from GitHub repositories, or from local repositories in trusted local runtimes
 - Move through rooms and corridors with keyboard controls on desktop or touch controls on mobile
 - Open repo room details (README, files, contributors, stats)
 - Use minimap/full map overlays while exploring
@@ -26,7 +46,20 @@ Each repository becomes a room. You explore the dungeon, open room info panels, 
 - Repository data is cached locally so revisiting the same user loads instantly
 - A small HUD indicator shows your remaining GitHub API budget for the current hour
 
-## Quick start (play locally)
+## Recommended: Electron desktop app
+
+Electron is the best way to experience Repo Dungeon:
+
+- Full local repository exploration flow
+- Native "Open Repository" and "Open in Editor" actions
+- Most reliable runtime parity for sprites, controls, and filesystem features
+
+```bash
+npm install
+npm run electron
+```
+
+## Quick start (web dev mode)
 
 ```bash
 npm install
@@ -35,7 +68,7 @@ npm run dev
 
 Open the local URL shown by Vite in your terminal. No environment configuration is required for the public-repos-only experience.
 
-> **Note:** `.env.example` still contains some `VITE_GITHUB_*` variables and an `auth:proxy` script remains in `package.json`. These are vestigial from the original OAuth flow (since removed — the app now loads public repositories only) and are not consumed by the runtime. They can be safely ignored.
+> **Note:** `.env.example` still contains some `VITE_GITHUB_*` variables and an `auth:proxy` script remains in `package.json`. These are vestigial from the original OAuth flow (since removed — the GitHub source flow now loads public repositories only) and are not consumed by the runtime. They can be safely ignored.
 
 ## GitHub setup
 
@@ -53,6 +86,25 @@ Public, unauthenticated GitHub REST has a budget of **60 requests / hour / IP**.
 - **In-HUD budget counter** — a small `API N/60 · resets in Xm` indicator in the top-right of the game view shows your remaining quota, lights up amber below 15 / red below 5, and flashes a `✓ cached` pip whenever a request was satisfied by a free 304. If the budget is exhausted, the panel falls back to stale cached data instead of failing.
 
 See [`docs/optimization-research.md`](docs/optimization-research.md) for the full breakdown of the techniques and how they are wired together.
+
+## Local repository mode
+
+Local repository mode is intended for trusted local runtimes only:
+
+- **Works in Electron** (desktop app)
+- **Works on trusted local web origins** (for example `http://localhost` during local development)
+- **Disabled on remote hosted builds**
+
+Hosted deployments intentionally disable local-folder access to preserve a strict security and privacy boundary: a remotely served site should not browse arbitrary directories on your machine.
+
+When running local mode in a supported browser, you may see a system/browser prompt such as "Allow this site to view and copy files." This is the standard File System Access permission dialog. In Repo Dungeon's local scan flow, the app reads folder/repository metadata to discover repos; it does not copy or upload your repository files.
+
+Share links remain GitHub-source only. Local repository dungeons do not encode filesystem paths, folder handles, or basement/subdirectory references into URLs.
+
+When using local rooms, open actions follow platform behavior:
+
+- **Open in default app** uses your OS file/app associations.
+- **Preferred editor command** (if configured) depends on the editor CLI being installed and available on your `PATH`, and command behavior can vary by operating system.
 
 ## Controls
 
@@ -78,7 +130,7 @@ See [`docs/optimization-research.md`](docs/optimization-research.md) for the ful
 
 ### Mobile touch verification
 
-1. Open the GitHub Pages build on a phone or in a mobile device emulator.
+1. Open your local dev build on a phone or in a mobile device emulator.
 2. Start gameplay and confirm the on-screen D-pad and `Interact` button appear.
 3. Hold each direction and confirm the player keeps moving while pressed.
 4. Confirm diagonal movement works by pressing two directions together.
@@ -113,10 +165,8 @@ npm run package:electron:linux
 Release workflows:
 
 - `.github/workflows/ci.yml`
-- `.github/workflows/deploy-pages.yml`
 - `.github/workflows/release-desktop.yml`
 
-## Deploy and profiling notes
+## Profiling notes
 
-- Use `VITE_BASE_PATH` (for example `/repo-dungeon/`) for GitHub Pages web builds.
 - Use `npm run build:web:profile` for sourcemap-enabled production profiling.

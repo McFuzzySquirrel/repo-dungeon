@@ -3,12 +3,12 @@
 ## 1. Overview
 
 **Product Name:** Repo Dungeon
-**Summary:** Repo Dungeon is a 2D pixel-art dungeon crawler where every room is a GitHub repository. Players navigate a procedurally generated dungeon built from their own (or any public user's) GitHub profile, discovering repo contents as they explore rooms. The game transforms the passive act of browsing a GitHub profile into an engaging, rewarding adventure — surfacing forgotten projects, showcasing skills, and compelling players to visit repos they'd never have found otherwise.
+**Summary:** Repo Dungeon is a 2D dungeon crawler where every room is a GitHub repository. Players navigate a procedurally generated dungeon built from their own (or any public user's) GitHub profile, discovering repo contents as they explore rooms. The game transforms the passive act of browsing a GitHub profile into an engaging, rewarding adventure — surfacing forgotten projects, showcasing skills, and compelling players to visit repos they'd never have found otherwise. The visual style is clean and modern, using SVG/vector assets for all gameplay and UI elements to ensure a cohesive, accessible experience.
 **Target Platform:** Web browser (desktop + mobile) and desktop app (Electron wrapper). Primary development target is the web build; Electron packaging is a secondary deliverable.
 **Key Constraints:**
-- Public-repos-only data loading via unauthenticated GitHub REST (60 req/hr/IP budget). *Post-MVP architectural change — see §2 and §8.1 note.*
+- GitHub source uses public-repos-only data loading via unauthenticated GitHub REST (60 req/hr/IP budget). Local repository source is supported only in trusted local runtimes (see `docs/features/FT-local-repo-dungeons.md`).
 - Solo developer project assisted by GitHub Copilot agents
-- Pixel art retro visual style throughout
+- Clean SVG/vector visual style throughout (pixel art assets deprecated)
 - No real-time multiplayer in v1
 
 ---
@@ -21,13 +21,15 @@
 | 1.1 | 2026-05-20 | GitHub Copilot | Align documentation with shipped web/Electron OAuth exchange flow, welcome-screen auth UX, and mobile touch controls |
 | 1.2 | 2026-05-20 | GitHub Copilot | **Post-MVP architectural pivot:** removed GitHub OAuth flow entirely; the app now loads public repositories only by GitHub username, with a persistent `localStorage` cache (24 h repo lists / 7 d room details). Added a GitHub REST optimization layer — ETag/`If-None-Match` revalidation (free `304 Not Modified` on unchanged data), repo-summary reuse from the list call, lazy README/contributors fetching tied to tab activation, rate-limit-aware degradation, and an in-HUD `N/60 · resets in Xm` budget counter. See [`docs/optimization-research.md`](./optimization-research.md) for the authoritative description of the current GitHub data flow. Earlier OAuth-flavoured requirements in §5.2, §7, §8.1, §10, §15, §17, and §18 are retained for historical context but **are no longer in effect**. |
 | 1.3 | 2026-05-20 | GitHub Copilot | **Post-MVP UX/presentation refresh:** corridor rendering now uses dedicated pathway sprites trimmed to room entrances, room zoom adapts more aggressively for exploration, player and NPC visuals use class/variant SVG placeholders, the class picker is a one-card left/right carousel, and progression UI now lives in a vertical left-rail HUD with separate inventory and badge buttons. |
+| 1.4 | 2026-05-20 | GitHub Copilot | **Visual style update:** All gameplay and UI assets now use clean SVG/vector art for a unified, modern look. Pixel art assets are deprecated. |
+| 1.5 | 2026-05-21 | GitHub Copilot | **Feature increment shipped:** local repository dungeon generation delivered in `docs/features/FT-local-repo-dungeons.md` (trusted-runtime gating, local scan/cache pipeline, source-aware room details, basement exploration, secure local open actions, and rollout hardening). |
 
 ---
 
 ## 3. Goals and Non-Goals
 
 ### 3.1 Goals
-- Enable a player to enter any GitHub username (or authenticate as themselves) and have a playable dungeon generated from that user's repositories in under 10 seconds
+- Enable a player to enter any GitHub username and have a playable dungeon generated from that user's repositories in under 10 seconds
 - Surface at least 3 repositories per play session that the player acknowledges discovering for the first time (measured by "I didn't know this existed" badge trigger)
 - Create enough gameplay depth (classes, loot, XP, puzzles) that players return to re-explore their dungeon as their repos change
 - Ship a web-playable build playable without installation, plus an Electron desktop build
@@ -59,7 +61,7 @@
 | ID | As a... | I want to... | So that... | Priority |
 |----|---------|-------------|-----------|----------|
 | US-01 | Tinkerer | Enter my GitHub username and have a dungeon generated from my repos | I can explore my own projects in a new way | Must |
-| US-02 | Tinkerer | Authenticate with GitHub OAuth | My private repos are included in the dungeon | Must |
+| US-02 | Tinkerer | ~~Authenticate with GitHub OAuth~~ *(removed in v1.2)* | ~~My private repos are included in the dungeon~~ | Removed |
 | US-03 | Explorer | Enter any public GitHub username | I can explore someone else's repos | Must |
 | US-04 | Explorer | Read a room's information panel | I can learn about the repo without leaving the game | Must |
 | US-05 | Explorer | Click a link to visit the repo on GitHub | I can explore the real repo when interested | Must |
@@ -80,7 +82,7 @@
 
 ### 5.1 Technology Selection
 
-The following options were evaluated against the project's requirements (pixel art 2D, web + desktop, solo dev, OAuth integration):
+The following options were evaluated against the project's requirements (2D game rendering, web + desktop, solo dev, trusted-local runtime support):
 
 | Framework | Browser | Desktop | Pixel Art Support | Solo Dev Ergonomics | Notes |
 |-----------|---------|---------|-------------------|---------------------|-------|
@@ -139,7 +141,7 @@ Procedural dungeon generation will use a zone-partitioned BSP (Binary Space Part
 ### 6.1 Core Loop
 
 ```
-1. ENTER — Player types a GitHub username (or authenticates with OAuth)
+1. ENTER — Player types a GitHub username or selects a local repository folder (trusted local runtimes only)
          ↓
 2. GENERATE — GitHub API fetches all repos; dungeon is procedurally generated
               Repos → grouped by language/topic → zones → rooms + corridors
@@ -183,14 +185,13 @@ From the player's perspective, success means:
 | Language | TypeScript | 5.x | Type safety, improved Copilot suggestions |
 | Build Tool | Vite | 8.x | Dev server, bundling, HMR |
 | Desktop | Electron | 42.x | Wraps web build for macOS/Windows/Linux |
-| GitHub Auth | GitHub OAuth App | — | OAuth redirect flow, token management |
 | Map Editor | Tiled | 1.11.x | Room template authoring |
 | Asset Pipeline | TexturePacker / free-tex-packer | Latest | Sprite atlas generation |
 | State Management | Zustand | 4.x | Lightweight global state for player, dungeon, session |
 | HTTP Client | Octokit.js | 22.x | Typed GitHub REST API client |
 | Testing | Vitest + React Testing Library | Latest | Unit + component tests |
-| CI/CD | GitHub Actions | — | Build, test, deploy web build to GitHub Pages |
-| Deployment (web) | GitHub Pages | — | Free static hosting |
+| CI/CD | GitHub Actions | — | Build, test, and package desktop artifacts |
+| Deployment (web, optional) | Static host (Netlify/Vercel/etc.) | — | Optional static web hosting |
 | Deployment (desktop) | electron-builder | Latest | macOS/Windows/Linux installers |
 
 ### 7.2 Project Structure
@@ -249,7 +250,7 @@ repo-dungeon/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml
-│       └── deploy-pages.yml
+│       └── release-desktop.yml
 ├── electron-builder.config.js
 ├── vite.config.ts
 ├── tsconfig.json
@@ -275,7 +276,7 @@ repo-dungeon/
 
 ## 8. Functional Requirements
 
-### 8.1 Authentication & Onboarding
+### 8.1 Source Selection & Onboarding
 
 > **v1.2 update:** As of v1.2 the OAuth flow has been removed. FR-02, FR-03, and FR-04 below are retained for historical context but are no longer in effect. FR-05 has been superseded by the rate-limit-aware degradation + HUD counter described in v1.2 of the Version History.
 
@@ -301,7 +302,7 @@ repo-dungeon/
 | FR-10 | Each repo becomes exactly one room in the dungeon | Must |
 | FR-11 | A hub "Profile Room" is placed at the dungeon entrance, showing user avatar, bio, total public repos, total stars, followers | Must |
 | FR-12 | Corridors connect rooms within a zone; zones are connected by guarded "gateway" rooms | Must |
-| FR-13 | The dungeon map is generated client-side; authenticated web builds may additionally rely on a secure token exchange endpoint for OAuth completion | Must |
+| FR-13 | The dungeon map is generated client-side for GitHub-source play, with local-source onboarding gated to trusted local runtimes (Electron or trusted local web origins) | Must |
 | FR-14 | Dungeons with ≤ 100 repos generate in under 10 seconds on a standard connection | Must |
 | FR-15 | If a user has > 100 repos, paginate API calls and show a loading progress bar | Should |
 | FR-16 | A seed can be saved/shared so the same username always produces the same dungeon layout | Should |
@@ -401,7 +402,7 @@ repo-dungeon/
 | NF-05 | GitHub API responses are cached in memory for the duration of a session to minimize requests | Must |
 | NF-06 | The web build bundle size is < 5 MB (excluding game assets) | Should |
 | NF-07 | Game runs at a stable 60 FPS on mid-range hardware (integrated GPU) | Should |
-| NF-08 | Public-profile exploration works fully client-side; authenticated web builds may rely on a separate server-side or serverless token exchange endpoint | Must |
+| NF-08 | Public-profile exploration works fully client-side; hosted builds must not expose local filesystem access | Must |
 | NF-09 | Graceful degradation: if a GitHub API call fails, the room still loads with a "data unavailable" state | Must |
 
 ---
@@ -410,9 +411,9 @@ repo-dungeon/
 
 | ID | Requirement | Priority |
 |----|-------------|----------|
-| SP-01 | OAuth tokens are stored only in client-controlled browser/Electron storage, never logged, and never embedded in the frontend bundle; browser code exchange may pass through a dedicated token exchange endpoint controlled by the deployer | Must |
-| SP-02 | Any optional web token exchange endpoint must remain stateless with respect to user repo data and must not persist OAuth tokens or other user data | Must |
-| SP-03 | The GitHub OAuth App uses the minimum required scopes: `read:user` (public data), `repo` (private repos, only requested if player explicitly opts in) | Must |
+| SP-01 | No GitHub authentication tokens or app secrets are required in the shipped runtime; frontend bundles must not embed credentials | Must |
+| SP-02 | Hosted deployments must not expose local filesystem scanning, folder handles, or local-path launch actions | Must |
+| SP-03 | Share URLs must encode only GitHub-source-safe data (username and room context) and must never include local paths or folder identifiers | Must |
 | SP-04 | The Electron build uses `contextIsolation: true` and `nodeIntegration: false` | Must |
 | SP-05 | "Visit on GitHub" links open in a new tab using `rel="noopener noreferrer"` | Must |
 | SP-06 | No analytics or telemetry are collected in v1 | Must |
@@ -421,10 +422,10 @@ repo-dungeon/
 | SP-09 | The application complies with GitHub's API Terms of Service regarding caching and display of data | Must |
 
 **Data Collected / Stored:**
-- OAuth access token (browser storage or Electron secure storage on the user's own device)
+- Selected repository source (`github` or `local`) in local storage
 - Visited room IDs per username (localStorage, user's own browser/device only)
 - Player class selection and XP (localStorage)
-- Public GitHub API requests are sent to GitHub; authenticated browser sign-in may also call a deployer-controlled token exchange endpoint to complete OAuth securely
+- Public GitHub API requests are sent directly to GitHub; local repository metadata stays on-device in trusted local runtimes
 
 ---
 
@@ -511,7 +512,7 @@ repo-dungeon/
 ```
 [Idle / Title Screen]
         │
-        ▼ (username entered or OAuth complete)
+        ▼ (GitHub username entered or local folder selected)
 [Fetching Repos]  ──── (error) ──▶ [Error State: show message, retry]
         │
         ▼ (repos received)
@@ -540,7 +541,7 @@ repo-dungeon/
 ```
 
 **Error States:**
-- Rate limit exceeded → prompt to authenticate
+- Rate limit exceeded → show budget warning and use cached data when available
 - Repo data unavailable → room shows "Mysterious Chamber" with placeholder content
 - Network offline → toast notification, cached rooms remain navigable
 
@@ -552,11 +553,11 @@ repo-dungeon/
 - [ ] Initialize Vite + Phaser 3 + React + TypeScript project
 - [ ] Configure Electron wrapper
 - [ ] Set up GitHub Actions CI (lint, type-check, unit tests, web build)
-- [ ] Implement GitHub OAuth flow (web + Electron)
+- [x] ~~Implement GitHub OAuth flow (web + Electron)~~ *(removed in v1.2 architecture pivot)*
 - [ ] Implement GitHub API client (Octokit) with caching layer
 - [ ] Implement `GET /users/{user}/repos` with pagination
 - [ ] Create a basic Phaser scene that renders a static tilemap room
-- [ ] Deploy stub to GitHub Pages
+- [ ] (Optional) Deploy web stub to a static host
 
 ### Phase 2: Dungeon Generation
 - [ ] Implement BSP dungeon generator
@@ -602,7 +603,7 @@ repo-dungeon/
 - [ ] Performance profiling and optimization
 - [ ] Accessibility audit (WCAG 2.1 AA on all React UI)
 - [ ] Write README with setup instructions and screenshots
-- [ ] GitHub Pages production deploy
+- [ ] Desktop release automation + tagged build publish
 
 ---
 
@@ -612,11 +613,11 @@ repo-dungeon/
 |-------|-------|-----------------|
 | Unit Tests | DungeonGenerator, LootSystem, ProgressTracker, GitHub API client | Vitest, mocked GitHub API responses |
 | Component Tests | React UI components (RoomInfoPanel, CharacterSelect, HUD, DungeonMap) | Vitest + React Testing Library |
-| Integration Tests | OAuth flow, full dungeon generation from mocked repo list | Vitest, MSW (Mock Service Worker) |
+| Integration Tests | Source selection flow, full dungeon generation from mocked repo list, local-source runtime gating | Vitest, MSW (Mock Service Worker) |
 | Manual / Exploratory | End-to-end dungeon exploration, room interactions, badge triggers | Manual playtesting with real GitHub accounts |
 | Performance | FPS stability, dungeon generation time, bundle size | Chrome DevTools, Lighthouse, Vite bundle analyser |
 | Cross-Browser | Core game loop and UI | Manual on Chrome, Firefox, Safari, Edge |
-| Electron | Desktop build packaging, OAuth flow via Electron | Manual on macOS + Windows |
+| Electron | Desktop build packaging, trusted local repository access, secure local open actions | Manual on macOS + Windows |
 
 **Key Test Scenarios:**
 1. Enter a username with 0 repos → dungeon shows empty state gracefully
@@ -624,8 +625,8 @@ repo-dungeon/
 3. Enter a username with 100+ repos → generation completes within 10 seconds
 4. Enter a username with repos of 8+ different languages → all biomes represented
 5. Unauthenticated user hits rate limit → friendly prompt appears
-6. OAuth login succeeds → private repos appear in dungeon
-7. OAuth logout → private rooms removed, token cleared
+6. Local repository mode is available in Electron and trusted local web origins, but unavailable on hosted deployments
+7. Local room open actions launch only validated local targets and reject invalid tokens/paths
 8. Visit all rooms in a zone → "Zone Cleared" badge awarded
 9. Visit all rooms in dungeon → "Dungeon Master" badge awarded
 10. Refresh page mid-session → visited stamps restored from localStorage
@@ -655,7 +656,7 @@ No telemetry is collected in v1. Success is evaluated through:
 3. Each room displays: repo name, description, language bar, star/fork counts, topics, README excerpt, file tree, and top contributors
 4. A "Visit on GitHub" button in every room opens the correct repo URL
 5. Repos are visually grouped into language/topic-themed biomes with distinct tilesets
-6. GitHub OAuth login works and includes private repos in the generated dungeon
+6. Local repository mode is available only in trusted local runtimes and remains disabled on hosted deployments
 7. Four selectable character classes are available at game start, each with distinct XP bonuses
 8. XP is awarded for room entry, opening the info panel, and clicking "Visit on GitHub"
 9. All 9 badges are implementable and at least 5 are triggerable in a standard play session
@@ -664,7 +665,7 @@ No telemetry is collected in v1. Success is evaluated through:
 12. The web build runs in Chrome 120+, Firefox 120+, Safari 17+, Edge 120+ without errors
 13. The Electron desktop build installs and runs on macOS and Windows
 14. All React UI components pass WCAG 2.1 AA color contrast checks
-15. GitHub OAuth secrets are not exposed in the frontend bundle, and any web token exchange occurs only through a deployer-controlled secure endpoint
+15. Frontend/share-link flows do not expose local filesystem paths, local folder identifiers, or secrets
 
 ---
 
@@ -675,13 +676,13 @@ No telemetry is collected in v1. Success is evaluated through:
 | Dependency | Type | Risk if Unavailable | Mitigation |
 |------------|------|---------------------|------------|
 | GitHub REST API v3 | External API | Game cannot generate dungeons | Cache aggressively; degrade gracefully; show clear error |
-| GitHub OAuth App | External service | Private repo access unavailable | Public repos still work unauthenticated |
+| Trusted local runtime APIs (Electron + local browser capabilities) | Platform/runtime | Local repository mode unavailable | Keep GitHub-source flow fully functional; clearly disable local mode on unsupported runtimes |
 | Phaser.js 3 | npm | Core game engine unavailable | Pinned version; vendored fallback if needed |
 | Octokit.js | npm | API client unavailable | Could replace with fetch calls |
 | Vite | npm (build) | Build tooling unavailable | Replaceable with webpack or esbuild |
 | Electron | npm (desktop) | Desktop build unavailable | Web build remains fully functional |
 | Google Fonts (Press Start 2P) | CDN | Pixel font unavailable | Bundle the font locally |
-| GitHub Pages | Hosting | Web build hosting unavailable | Deploy to Netlify or Vercel instead |
+| Static host (optional) | Hosting | Web build hosting unavailable | Continue desktop distribution; deploy to Netlify/Vercel if needed |
 
 ### 18.2 Risks
 
@@ -721,7 +722,7 @@ No telemetry is collected in v1. Success is evaluated through:
 | 4 | What freely licensed pixel art asset packs are acceptable for v1? | Open Game Art (opengameart.org) CC0/CC-BY assets; documented in credits |
 | 5 | Should audio be included in v1 or deferred? | Include a minimal set: ambient dungeon music + 3 SFX (footstep, room entry, loot collect) |
 | 6 | How should future badge unlocks be surfaced without interrupting play too often? | Keep the current popup for unlock moments and the persistent badge panel for detailed review |
-| 7 | Should the shareable URL work for private repos? | No — shared URLs only expose public dungeon layouts; private rooms show as "Secret Chamber" to visitors |
+| 7 | Should the shareable URL include local repository path details? | No — shared URLs remain GitHub-source only and must never encode local paths, handles, or basement context |
 | 8 | What is the minimum supported screen resolution? | 1024×600 for web; no hard minimum for desktop |
 
 ---
@@ -742,5 +743,5 @@ No telemetry is collected in v1. Success is evaluated through:
 | XP | Experience points earned by exploring rooms and interacting with content |
 | BSP | Binary Space Partitioning — the algorithm used to generate room layouts |
 | Octokit | The official GitHub REST API client library for JavaScript/TypeScript |
-| PKCE | Proof Key for Code Exchange — OAuth 2.0 extension that removes the need for a client secret in public clients |
+| ETag Revalidation | Conditional HTTP request flow using `ETag` and `If-None-Match` to reuse unchanged API responses and receive free `304 Not Modified` replies |
 | Biome Seed | A deterministic value derived from the GitHub username used to ensure consistent dungeon layouts |

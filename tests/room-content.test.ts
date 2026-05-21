@@ -31,13 +31,31 @@ const repoRoom: DungeonRoomNode = {
 
 describe('room content scaffolding', () => {
   it('creates all three interactable room object blueprints', () => {
-    const objects = buildRoomObjectBlueprints(repoRoom);
-    expect(objects).toHaveLength(3);
-    expect(objects.map((obj) => obj.objectType)).toEqual([
+    const objectsA = buildRoomObjectBlueprints(repoRoom);
+    const objectsB = buildRoomObjectBlueprints(repoRoom);
+
+    expect(objectsA).toHaveLength(3);
+    expect(objectsA).toEqual(objectsB);
+    expect(objectsA.map((obj) => obj.objectType)).toEqual([
       'readme-scroll',
       'file-tree-archive',
       'contributors-gallery',
     ]);
+
+    const minX = repoRoom.position.x - repoRoom.size.width / 2;
+    const maxX = repoRoom.position.x + repoRoom.size.width / 2;
+    const minY = repoRoom.position.y - repoRoom.size.height / 2;
+    const maxY = repoRoom.position.y + repoRoom.size.height / 2;
+
+    for (const object of objectsA) {
+      expect(object.x).toBeGreaterThanOrEqual(minX);
+      expect(object.x).toBeLessThanOrEqual(maxX);
+      expect(object.y).toBeGreaterThanOrEqual(minY);
+      expect(object.y).toBeLessThanOrEqual(maxY);
+    }
+
+    const uniquePositions = new Set(objectsA.map((obj) => `${obj.x},${obj.y}`));
+    expect(uniquePositions.size).toBe(objectsA.length);
   });
 
   it('creates deterministic contributor npc data for a repo room', () => {

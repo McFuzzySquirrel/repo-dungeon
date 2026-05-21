@@ -17,6 +17,12 @@ const ROOM_OBJECT_ICONS: Record<RoomObjectType, string> = {
   'contributors-gallery': 'sprite-object-contributors-gallery',
 };
 
+const ROOM_OBJECT_FALLBACK_GLYPHS: Record<RoomObjectType, string> = {
+  'readme-scroll': 'R',
+  'file-tree-archive': 'F',
+  'contributors-gallery': 'C',
+};
+
 const ROOM_OBJECT_COLORS: Record<RoomObjectType, number> = {
   'readme-scroll': 0x8ad6ff,
   'file-tree-archive': 0xffc86a,
@@ -34,19 +40,33 @@ export class RoomObject extends Phaser.GameObjects.Container {
     room: DungeonRoomNode,
     biomeId: string,
     reducedMotion: boolean,
+    useSvgIconTextures = true,
   ) {
     super(scene, blueprint.x, blueprint.y);
     scene.add.existing(this);
 
     const presentation = getBiomePresentation(biomeId);
     const accentColor = ROOM_OBJECT_COLORS[blueprint.objectType];
-    const glow = scene.add.circle(0, 0, 16, accentColor, 0.22);
+    const glowOuter = scene.add.circle(0, 0, 21, accentColor, 0.2);
+    glowOuter.setBlendMode(Phaser.BlendModes.ADD);
+    const glow = scene.add.circle(0, 0, 16, accentColor, 0.34);
+    glow.setBlendMode(Phaser.BlendModes.ADD);
     const base = scene.add.circle(0, 0, 12, presentation.palette.prop, 0.96);
     base.setStrokeStyle(2, presentation.palette.accent, 0.95);
     const highlight = scene.add.circle(-3, -3, 4, accentColor, 0.7);
 
-    const icon = scene.add.image(0, -1, ROOM_OBJECT_ICONS[blueprint.objectType]);
-    icon.setDisplaySize(19, 19);
+    const iconTextureKey = ROOM_OBJECT_ICONS[blueprint.objectType];
+    const icon = useSvgIconTextures && scene.textures.exists(iconTextureKey)
+      ? scene.add.image(0, -1, iconTextureKey)
+      : scene.add.text(0, -1, ROOM_OBJECT_FALLBACK_GLYPHS[blueprint.objectType], {
+        fontFamily: 'monospace',
+        fontSize: '15px',
+        fontStyle: 'bold',
+        color: '#f4e5bf',
+      }).setOrigin(0.5);
+    if ('setDisplaySize' in icon) {
+      (icon as Phaser.GameObjects.Image).setDisplaySize(19, 19);
+    }
     icon.setAlpha(0.96);
 
     const caption = scene.add.text(0, 16, 'Loot', {
@@ -56,7 +76,7 @@ export class RoomObject extends Phaser.GameObjects.Container {
     });
     caption.setOrigin(0.5);
 
-    this.add([glow, base, highlight, icon, caption]);
+    this.add([glowOuter, glow, base, highlight, icon, caption]);
     this.interactionRadius = 44;
     this.payload = {
       roomId: room.id,
@@ -68,8 +88,8 @@ export class RoomObject extends Phaser.GameObjects.Container {
 
     if (!reducedMotion) {
       scene.tweens.add({
-        targets: glow,
-        alpha: { from: 0.12, to: 0.3 },
+        targets: [glowOuter, glow],
+        alpha: { from: 0.16, to: 0.45 },
         duration: 950,
         yoyo: true,
         repeat: -1,
@@ -109,9 +129,10 @@ export class RoomObject extends Phaser.GameObjects.Container {
     room: DungeonRoomNode,
     biomeId: string,
     reducedMotion: boolean,
+    useSvgIconTextures = true,
   ): RoomObject[] {
     return buildRoomObjectBlueprints(room).map(
-      (blueprint) => new RoomObject(scene, blueprint, room, biomeId, reducedMotion),
+      (blueprint) => new RoomObject(scene, blueprint, room, biomeId, reducedMotion, useSvgIconTextures),
     );
   }
 }
