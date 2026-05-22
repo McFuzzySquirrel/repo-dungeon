@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import type { LocalGitMetadata } from '@/localRepos/types';
+import type { LocalGitContributor, LocalGitMetadata } from '@/localRepos/types';
 
 const execFileAsync = promisify(execFile);
 
@@ -27,14 +27,34 @@ function parseCommitCount(raw: string): number | null {
 }
 
 function parseContributorCount(raw: string): number | null {
+  const contributors = parseContributors(raw);
+  return contributors.length;
+}
+
+function parseContributors(raw: string): LocalGitContributor[] {
   const lines = raw
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  if (lines.length === 0) {
-    return 0;
+  const contributors: LocalGitContributor[] = [];
+  for (const line of lines) {
+    const match = line.match(/^(\d+)\s+(.+?)(?:\s+<([^>]+)>)?$/u);
+    if (!match) {
+      continue;
+    }
+
+    const commitCount = Number.parseInt(match[1] ?? '', 10);
+    if (!Number.isFinite(commitCount)) {
+      continue;
+    }
+
+    contributors.push({
+      commitCount,
+      name: match[2]?.trim() ?? 'Unknown',
+      email: match[3]?.trim() ?? null,
+    });
   }
-  return lines.length;
+  return contributors;
 }
 
 export async function isGitCliAvailable(runner: GitCommandRunner = createGitCommandRunner()): Promise<boolean> {
@@ -60,6 +80,7 @@ export async function readGitMetadata(
       lastCommitAt: null,
       isDirty: null,
       contributorCount: null,
+      contributors: [],
       unavailableReason: 'git CLI is not available on this machine.',
     };
   }
@@ -72,6 +93,7 @@ export async function readGitMetadata(
     lastCommitAt: null,
     isDirty: null,
     contributorCount: null,
+    contributors: [],
     unavailableReason: null,
   };
 
@@ -110,10 +132,15 @@ export async function readGitMetadata(
     return stdout.trim().length > 0;
   }, null as boolean | null);
 
-  metadata.contributorCount = await settle(async () => {
-    const { stdout } = await runner.run(['shortlog', '-s', '-n', '--all'], repositoryPath);
-    return parseContributorCount(stdout);
-  }, null as number | null);
+  const contributorsRaw = await settle(async () => {
+    const { stdout } = await runner.run(['shortlog', '-s', '-n', '-e', '--all'], repositoryPath);
+    return stdout;
+  }, null as string | null);
+
+  if (contributorsRaw !== null) {
+    metadata.contributors = parseContributors(contributorsRaw);
+    metadata.contributorCount = parseContributorCount(contributorsRaw);
+  }
 
   return metadata;
 }

@@ -204,10 +204,6 @@ export function RoomInfoPanel() {
         };
 
         const nextTab = activeTabByObject[event.objectType];
-        if (prev.isLocalRoom && nextTab === 'contributors') {
-          return prev;
-        }
-
         return {
           ...prev,
           activeTab: nextTab,
@@ -506,7 +502,7 @@ export function RoomInfoPanel() {
   }
 
   const { data, error, isLoading, activeTab, currentRoomName, isLocalRoom, localRoom } = state;
-  const availableTabs = isLocalRoom ? (['overview', 'readme', 'files'] as const) : (['overview', 'readme', 'files', 'contributors'] as const);
+  const availableTabs = ['overview', 'readme', 'files', 'contributors'] as const;
   const localOpenActionsAvailable = localAccessState.environment === 'electron';
 
   return (
@@ -707,10 +703,10 @@ export function RoomInfoPanel() {
                   <div className="room-info-section">
                     <h3>Contributor Notes</h3>
                     <p>
-                      Local mode contributor NPCs in rooms are thematic placeholders unless full git contributor metadata is available.
+                      Local mode contributor NPCs in rooms are thematic placeholders. Open the Contributors tab to inspect git shortlog details from this local repository.
                     </p>
                     <p>
-                      For accurate contributor counts and launch actions, use the Electron desktop app.
+                      Contributor details and launch actions require the Electron desktop app.
                     </p>
                   </div>
 
@@ -730,6 +726,43 @@ export function RoomInfoPanel() {
                     <p>Python project files: {localRoom.candidate.filesystem.hasPyProject ? 'Present' : 'Not found'}</p>
                   </div>
 
+                </div>
+              )}
+
+              {isLocalRoom && localRoom && activeTab === 'contributors' && (
+                <div
+                  className="room-info-tab-panel"
+                  id="room-info-contributors"
+                  role="tabpanel"
+                  aria-labelledby="room-info-tab-contributors"
+                >
+                  {localRoom.candidate.git.available ? (
+                    localRoom.candidate.git.contributors && localRoom.candidate.git.contributors.length > 0 ? (
+                      <div className="room-info-contributors">
+                        {localRoom.candidate.git.contributors.slice(0, 10).map((contributor) => (
+                          <div key={`${contributor.name}-${contributor.email ?? 'no-email'}`} className="room-info-contributor">
+                            <div className="contributor-info">
+                              <span className="contributor-name">{contributor.name}</span>
+                              {contributor.email && (
+                                <span className="contributor-count">{contributor.email}</span>
+                              )}
+                              <span className="contributor-count">{contributor.commitCount} commits</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="room-info-empty">
+                        {localRoom.candidate.git.contributorCount === 0
+                          ? 'No contributors found in git history.'
+                          : 'Contributor details are unavailable for this repository scan.'}
+                      </p>
+                    )
+                  ) : (
+                    <p className="room-info-empty">
+                      {localRoom.candidate.git.unavailableReason || 'Git metadata is unavailable in this runtime.'}
+                    </p>
+                  )}
                 </div>
               )}
 

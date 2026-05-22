@@ -43,7 +43,14 @@ export interface LocalGitMetadata {
   lastCommitAt: string | null;
   isDirty: boolean | null;
   contributorCount: number | null;
+  contributors?: LocalGitContributor[];
   unavailableReason: string | null;
+}
+
+export interface LocalGitContributor {
+  name: string;
+  email: string | null;
+  commitCount: number;
 }
 
 export interface LocalReadmePreview {

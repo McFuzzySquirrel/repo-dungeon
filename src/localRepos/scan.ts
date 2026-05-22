@@ -160,6 +160,7 @@ async function collectRepoMetadata(
       lastCommitAt: null,
       isDirty: null,
       contributorCount: null,
+      contributors: [],
       unavailableReason: 'git metadata extraction is unavailable in trusted-local browser mode.',
     };
 
