@@ -223,6 +223,7 @@ async function readBrowserGitMetadata(repoHandle: FileSystemDirectoryHandle): Pr
       lastCommitAt: null,
       isDirty: null,
       contributorCount: null,
+      contributors: [],
       unavailableReason: 'Unable to inspect .git metadata from this browser runtime.',
     };
   }
@@ -240,6 +241,7 @@ async function readBrowserGitMetadata(repoHandle: FileSystemDirectoryHandle): Pr
     lastCommitAt: null,
     isDirty: null,
     contributorCount: null,
+    contributors: [],
     unavailableReason: 'Commit history and contributor counts require git CLI support (available in Electron mode).',
   };
 }

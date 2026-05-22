@@ -24,7 +24,14 @@ interface LocalGitMetadata {
   lastCommitAt: string | null;
   isDirty: boolean | null;
   contributorCount: number | null;
+  contributors: LocalGitContributor[];
   unavailableReason: string | null;
+}
+
+interface LocalGitContributor {
+  name: string;
+  email: string | null;
+  commitCount: number;
 }
 
 interface LocalRepoScanCandidate {
@@ -199,8 +206,35 @@ function buildNoGitMetadata(reason: string): LocalGitMetadata {
     lastCommitAt: null,
     isDirty: null,
     contributorCount: null,
+    contributors: [],
     unavailableReason: reason,
   };
+}
+
+function parseContributors(raw: string): LocalGitContributor[] {
+  const contributors: LocalGitContributor[] = [];
+  const lines = raw
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  for (const line of lines) {
+    const match = line.match(/^(\d+)\s+(.+?)(?:\s+<([^>]+)>)?$/u);
+    if (!match) {
+      continue;
+    }
+
+    const commitCount = Number.parseInt(match[1] ?? '', 10);
+    if (!Number.isFinite(commitCount)) {
+      continue;
+    }
+
+    contributors.push({
+      commitCount,
+      name: match[2]?.trim() ?? 'Unknown',
+      email: match[3]?.trim() ?? null,
+    });
+  }
+  return contributors;
 }
 
 async function isGitCliAvailable(): Promise<boolean> {
@@ -254,14 +288,11 @@ async function readGitMetadata(repoPath: string, isAvailable: boolean): Promise<
     return stdout.trim().length > 0;
   }, null as boolean | null);
 
-  const contributorCount = await settleGitCommand(async () => {
-    const { stdout } = await execFileAsync('git', ['shortlog', '-s', '-n', '--all'], { cwd: repoPath });
-    const lines = stdout
-      .split('\n')
-      .map((line) => line.trim())
-      .filter((line) => line.length > 0);
-    return lines.length;
-  }, null as number | null);
+  const contributorsRaw = await settleGitCommand(async () => {
+    const { stdout } = await execFileAsync('git', ['shortlog', '-s', '-n', '-e', '--all'], { cwd: repoPath });
+    return stdout;
+  }, null as string | null);
+  const contributors = contributorsRaw ? parseContributors(contributorsRaw) : [];
 
   return {
     available: true,
@@ -270,7 +301,8 @@ async function readGitMetadata(repoPath: string, isAvailable: boolean): Promise<
     commitCount,
     lastCommitAt,
     isDirty,
-    contributorCount,
+    contributorCount: contributorsRaw === null ? null : contributors.length,
+    contributors,
     unavailableReason: null,
   };
 }

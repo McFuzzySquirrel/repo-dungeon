@@ -36,8 +36,8 @@ describe('readGitMetadata', () => {
         if (command === 'status --porcelain') {
           return Promise.resolve({ stdout: ' M src/index.ts\n', stderr: '' });
         }
-        if (command === 'shortlog -s -n --all') {
-          return Promise.resolve({ stdout: '   10\tAlice\n    3\tBob\n', stderr: '' });
+        if (command === 'shortlog -s -n -e --all') {
+          return Promise.resolve({ stdout: '   10\tAlice Example <alice@example.com>\n    3\tBob Example\n', stderr: '' });
         }
         return Promise.reject(new Error(`Unexpected command: ${command}`));
       },
@@ -52,6 +52,10 @@ describe('readGitMetadata', () => {
     expect(metadata.lastCommitAt).toBe('2026-05-21T12:30:00Z');
     expect(metadata.isDirty).toBe(true);
     expect(metadata.contributorCount).toBe(2);
+    expect(metadata.contributors).toEqual([
+      { commitCount: 10, name: 'Alice Example', email: 'alice@example.com' },
+      { commitCount: 3, name: 'Bob Example', email: null },
+    ]);
     expect(metadata.unavailableReason).toBeNull();
   });
 });

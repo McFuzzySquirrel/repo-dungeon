@@ -186,6 +186,11 @@ describe('RoomInfoPanel local integration', () => {
               lastCommitAt: '2026-05-20T20:10:00.000Z',
               isDirty: false,
               contributorCount: 3,
+              contributors: [
+                { name: 'Alice Example', email: 'alice@example.com', commitCount: 10 },
+                { name: 'Bob Example', email: null, commitCount: 3 },
+                { name: 'Carol Example', email: 'carol@example.com', commitCount: 1 },
+              ],
               unavailableReason: null,
             },
           },
@@ -235,7 +240,7 @@ describe('RoomInfoPanel local integration', () => {
     expect(screen.getByRole('tab', { name: 'Overview' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Readme' })).toBeInTheDocument();
     expect(screen.getByRole('tab', { name: 'Files' })).toBeInTheDocument();
-    expect(screen.queryByRole('tab', { name: 'Contributors' })).not.toBeInTheDocument();
+    expect(screen.getByRole('tab', { name: 'Contributors' })).toBeInTheDocument();
 
     fireEvent.click(screen.getByText('Open Repository'));
 
@@ -255,6 +260,11 @@ describe('RoomInfoPanel local integration', () => {
     expect(await screen.findByText('README.md')).toBeInTheDocument();
     expect(await screen.findByRole('button', { name: 'Explore src' })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Explore cache' })).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Contributors' }));
+    expect(await screen.findByText('Alice Example')).toBeInTheDocument();
+    expect(screen.getByText('alice@example.com')).toBeInTheDocument();
+    expect(screen.getByText('10 commits')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('tab', { name: 'Readme' }));
 
