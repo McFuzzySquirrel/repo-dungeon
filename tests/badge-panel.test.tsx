@@ -3,8 +3,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { BadgePanel } from '@/ui/components/BadgePanel';
 
 vi.mock('@/store/progressionStore', () => ({
-  useProgressionStore: vi.fn((selector?: (state: { unlockedBadges: string[] }) => unknown) => {
-    const state = { unlockedBadges: ['first-steps', 'guild-finder'] };
+  useProgressionStore: vi.fn((selector?: (state: Record<string, unknown>) => unknown) => {
+    const state = {
+      unlockedBadges: ['first-steps', 'guild-finder'],
+      discoveryCount: 4,
+      readmeCount: 1,
+      githubLinkClicks: 0,
+      reviewPassCount: 0,
+    };
     return selector ? selector(state) : state;
   }),
 }));

@@ -108,7 +108,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 1.5rem;
+  margin-bottom: 1rem;
 }
 
 .inventory-title {
@@ -144,6 +144,26 @@
   color: #888;
 }
 
+.inventory-collection-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.inventory-collection-tab {
+  border: 1px solid rgba(74, 158, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(74, 158, 255, 0.08);
+  color: #d5e8ff;
+  padding: 0.35rem 0.8rem;
+  cursor: pointer;
+}
+
+.inventory-collection-tab.active {
+  background: rgba(74, 158, 255, 0.25);
+  color: #fff;
+}
+
 .inventory-controls {
   display: flex;
   align-items: center;
@@ -177,7 +197,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 1rem;
-  margin-bottom: 2rem;
+  margin-bottom: 0;
 }
 
 .inventory-item {
@@ -190,6 +210,8 @@
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
+  width: 100%;
+  font: inherit;
 }
 
 .inventory-item:hover {
@@ -258,6 +280,11 @@
   letter-spacing: 0.5px;
 }
 
+.inventory-item.selected,
+.inventory-badge-card.selected {
+  box-shadow: 0 0 0 2px rgba(74, 158, 255, 0.85);
+}
+
 .inventory-stats {
   background: rgba(74, 158, 255, 0.1);
   border: 1px solid rgba(74, 158, 255, 0.3);
@@ -320,6 +347,69 @@
   color: #c9d1e6;
 }
 
+.inventory-badge-card {
+  justify-content: flex-start;
+  width: 100%;
+  cursor: pointer;
+  color: inherit;
+}
+
+.inventory-badge-card.locked {
+  opacity: 0.7;
+}
+
+.inventory-collections-layout {
+  display: grid;
+  grid-template-columns: 1.6fr 1fr;
+  gap: 1rem;
+  align-items: start;
+}
+
+.inventory-detail {
+  border: 1px solid rgba(74, 158, 255, 0.25);
+  background: rgba(8, 17, 32, 0.7);
+  border-radius: 8px;
+  padding: 0.9rem;
+}
+
+.inventory-detail h3 {
+  margin: 0 0 0.5rem 0;
+  color: #fff;
+}
+
+.inventory-detail p {
+  margin: 0.35rem 0;
+  color: #d7e0f5;
+  font-size: 0.9rem;
+}
+
+.inventory-archaeology-log {
+  border: 1px solid rgba(245, 223, 154, 0.2);
+  border-radius: 8px;
+  padding: 0.9rem;
+  background: rgba(212, 175, 55, 0.08);
+}
+
+.inventory-archaeology-list {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.inventory-archaeology-entry {
+  display: grid;
+  gap: 0.1rem;
+  background: rgba(8, 17, 32, 0.5);
+  border: 1px solid rgba(245, 223, 154, 0.15);
+  border-radius: 8px;
+  padding: 0.6rem;
+}
+
+.inventory-archaeology-entry span,
+.inventory-archaeology-entry time {
+  color: #d7e0f5;
+  font-size: 0.82rem;
+}
+
 .inventory-hint {
   text-align: center;
   font-size: 0.85rem;
@@ -354,6 +444,10 @@
 
   .inventory-grid {
     grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
+  .inventory-collections-layout {
+    grid-template-columns: 1fr;
   }
 
   .inventory-title {

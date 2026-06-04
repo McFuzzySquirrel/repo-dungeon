@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BADGES, type BadgeId } from '@/game/systems/BadgeTracker';
+import { getBadgeProgress } from '@/game/systems/progressionEngine';
 import { useProgressionStore } from '@/store/progressionStore';
 import { isTypingInEditableTarget } from '@/ui/systems/keyboard';
 import '@/ui/styles/badge-panel.css';
@@ -8,7 +9,17 @@ const ALL_BADGE_IDS = Object.keys(BADGES) as BadgeId[];
 
 export function BadgePanel() {
   const unlockedBadges = useProgressionStore((state) => state.unlockedBadges);
+  const discoveryCount = useProgressionStore((state) => state.discoveryCount);
+  const readmeCount = useProgressionStore((state) => state.readmeCount);
+  const githubLinkClicks = useProgressionStore((state) => state.githubLinkClicks);
+  const reviewPassCount = useProgressionStore((state) => state.reviewPassCount);
   const [isOpen, setIsOpen] = useState(false);
+  const signals = {
+    discoveryCount,
+    readmeCount,
+    githubLinkClicks,
+    reviewPassCount,
+  };
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -71,6 +82,7 @@ export function BadgePanel() {
           {ALL_BADGE_IDS.map((badgeId) => {
             const badge = BADGES[badgeId];
             const isUnlocked = unlockedBadges.includes(badgeId);
+            const progress = getBadgeProgress(badgeId, signals, isUnlocked);
             return (
               <article
                 key={badgeId}
@@ -81,6 +93,19 @@ export function BadgePanel() {
                 <div className="badge-card-body">
                   <h3 className="badge-card-name">{badge.name}</h3>
                   <p className="badge-card-description">{badge.description}</p>
+                  <p className="badge-card-description">{badge.unlockDetail}</p>
+                  {progress.nextMilestone ? (
+                    <div className="badge-card-progress" aria-label={`${badge.name} milestone progress`}>
+                      <div className="badge-card-progress-track">
+                        <div className="badge-card-progress-fill" style={{ width: `${progress.nextMilestoneProgress}%` }} />
+                      </div>
+                      <span className="badge-card-progress-text">
+                        Next: {progress.nextMilestone.label} ({progress.current}/{progress.nextMilestone.target})
+                      </span>
+                    </div>
+                  ) : (
+                    <span className="badge-card-progress-text">Milestones complete</span>
+                  )}
                   <span className="badge-card-state">{isUnlocked ? 'Unlocked' : 'Locked'}</span>
                 </div>
               </article>

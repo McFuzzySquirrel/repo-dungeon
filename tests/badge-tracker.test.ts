@@ -110,6 +110,14 @@ describe('BadgeTracker', () => {
       expect(tracker.getGitHubLinkClickCount()).toBe(3);
     });
 
+    describe('Review Pass Tracking', () => {
+      it('should unlock Zone Cleared badge at first review pass', () => {
+        expect(tracker.hasBadge('zone-cleared')).toBe(false);
+        tracker.trackReviewPass();
+        expect(tracker.hasBadge('zone-cleared')).toBe(true);
+      });
+    });
+
     it('should unlock Portal Walker badge at 5 clicks', () => {
       for (let i = 0; i < 4; i++) {
         tracker.trackGitHubLinkClick();
@@ -168,11 +176,13 @@ describe('BadgeTracker', () => {
       expect(state).toHaveProperty('discoveryCount');
       expect(state).toHaveProperty('readmeCount');
       expect(state).toHaveProperty('githubLinkClicks');
+      expect(state).toHaveProperty('reviewPassCount');
 
       expect(state.unlockedBadges).toContain('first-steps');
       expect(state.discoveryCount).toBe(1);
       expect(state.readmeCount).toBe(1);
       expect(state.githubLinkClicks).toBe(1);
+      expect(state.reviewPassCount).toBe(0);
     });
   });
 });

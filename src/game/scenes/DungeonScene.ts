@@ -838,7 +838,7 @@ export class DungeonScene extends Phaser.Scene {
 
     const prompt = nearest.type === 'room-object'
       ? `Press E to collect ${nearest.object.getPromptTitle()}`
-      : `Press E to greet ${nearest.contributor.getInteractionPayload().contributor.login}`;
+      : `Press E to ask ${nearest.contributor.getInteractionPayload().contributor.login} for guidance`;
 
     this.interactionPrompt.setText(prompt);
     this.interactionPrompt.setVisible(true);

@@ -4,6 +4,8 @@
 
 import { useProgressionStore } from '@/store/progressionStore';
 import { CLASSES } from '@/game/config/classes';
+import { getXpForNextLevel } from '@/game/systems/ProgressionTracker';
+import { getRankProgress } from '@/game/systems/progressionEngine';
 
 export function useProgression() {
   const {
@@ -13,13 +15,17 @@ export function useProgression() {
     xpTowardNextLevel,
     inventory,
     unlockedBadges,
+    archaeologyReviewCount,
+    reviewPassCount,
+    roomsTowardNextPass,
+    archaeologyLog,
   } = useProgressionStore();
 
   const classConfig = selectedClass ? CLASSES[selectedClass] : null;
 
-  // Calculate XP bar progress (assuming ~300 XP per level on average)
-  const maxXpPerLevel = 300;
+  const maxXpPerLevel = getXpForNextLevel(level);
   const xpProgress = Math.min((xpTowardNextLevel / maxXpPerLevel) * 100, 100);
+  const rankProgress = getRankProgress(totalXp);
 
   return {
     selectedClass,
@@ -32,5 +38,10 @@ export function useProgression() {
     inventoryCount: inventory.length,
     unlockedBadges,
     badgeCount: unlockedBadges.length,
+    archaeologyReviewCount,
+    reviewPassCount,
+    roomsTowardNextPass,
+    archaeologyLog,
+    rankProgress,
   };
 }

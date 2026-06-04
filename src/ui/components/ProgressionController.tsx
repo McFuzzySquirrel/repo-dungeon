@@ -1,6 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { BadgeTracker, type BadgeId } from '@/game/systems/BadgeTracker';
 import { ProgressionTracker } from '@/game/systems/ProgressionTracker';
+import {
+  REVIEW_PASS_ROOM_TARGET_MAX,
+  REVIEW_PASS_ROOM_TARGET_MIN,
+} from '@/game/systems/progressionEngine';
 import { usePlayerStore } from '@/store/playerStore';
 import { useProgressionStore } from '@/store/progressionStore';
 import { BadgeUnlockOverlay } from '@/ui/components/BadgeUnlockOverlay';
@@ -24,21 +28,37 @@ const ROOM_OBJECT_XP: Record<'readme-scroll' | 'file-tree-archive' | 'contributo
 };
 
 const CONTRIBUTOR_XP = 10;
+const REVIEW_CHECKPOINT_XP = 8;
+const REVIEW_PASS_COMPLETION_XP = 28;
+
+function resolveReviewPassTarget(totalRepoRooms: number): number {
+  if (totalRepoRooms <= 0) {
+    return REVIEW_PASS_ROOM_TARGET_MIN;
+  }
+  const dynamicTarget = Math.ceil(totalRepoRooms * 0.4);
+  return Math.max(REVIEW_PASS_ROOM_TARGET_MIN, Math.min(REVIEW_PASS_ROOM_TARGET_MAX, dynamicTarget));
+}
 
 export function ProgressionController() {
-  const { currentRoom, getRoomDetails } = useGameScene();
+  const { currentRoom, dungeon, getRoomDetails } = useGameScene();
   const selectedClass = usePlayerStore((state) => state.selectedClass);
   const level = useProgressionStore((state) => state.level);
   const totalXp = useProgressionStore((state) => state.totalXp);
   const discoveryCount = useProgressionStore((state) => state.discoveryCount);
   const readmeCount = useProgressionStore((state) => state.readmeCount);
   const githubLinkClicks = useProgressionStore((state) => state.githubLinkClicks);
+  const reviewPassCount = useProgressionStore((state) => state.reviewPassCount);
+  const roomsTowardNextPass = useProgressionStore((state) => state.roomsTowardNextPass);
   const unlockedBadges = useProgressionStore((state) => state.unlockedBadges);
   const setSelectedClass = useProgressionStore((state) => state.setSelectedClass);
   const updateProgression = useProgressionStore((state) => state.updateProgression);
   const setBadges = useProgressionStore((state) => state.setBadges);
   const incrementDiscoveryCount = useProgressionStore((state) => state.incrementDiscoveryCount);
   const incrementReadmeCount = useProgressionStore((state) => state.incrementReadmeCount);
+  const incrementArchaeologyReviewCount = useProgressionStore((state) => state.incrementArchaeologyReviewCount);
+  const incrementReviewPassCount = useProgressionStore((state) => state.incrementReviewPassCount);
+  const setRoomsTowardNextPass = useProgressionStore((state) => state.setRoomsTowardNextPass);
+  const addArchaeologyLogEntry = useProgressionStore((state) => state.addArchaeologyLogEntry);
   const [recentBadgeId, setRecentBadgeId] = useState<BadgeId | null>(null);
 
   const trackerRef = useRef<ProgressionTracker | null>(null);
@@ -46,7 +66,14 @@ export function ProgressionController() {
   const seenRoomIdsRef = useRef<Set<string>>(new Set());
   const seenObjectIdsRef = useRef<Set<string>>(new Set());
   const seenContributorIdsRef = useRef<Set<string>>(new Set());
+  const reviewPassRoomIdsRef = useRef<Set<string>>(new Set());
+  const reviewPassRoomsCountRef = useRef<number>(roomsTowardNextPass);
   const previousGitHubClicksRef = useRef(githubLinkClicks);
+  const totalRepoRooms = useMemo(
+    () => dungeon?.rooms.filter((room) => room.type === 'repo').length ?? 0,
+    [dungeon],
+  );
+  const reviewPassTarget = useMemo(() => resolveReviewPassTarget(totalRepoRooms), [totalRepoRooms]);
 
   useEffect(() => {
     const activeClass = selectedClass ?? 'explorer';
@@ -70,6 +97,7 @@ export function ProgressionController() {
       discoveryCount,
       readmeCount,
       githubLinkClicks,
+      reviewPassCount,
       zonesClearedCount: 0,
     });
     badgeTracker.on('badgeUnlocked', (event: { badgeId: BadgeId }) => {
@@ -78,10 +106,25 @@ export function ProgressionController() {
     });
     badgeTrackerRef.current = badgeTracker;
     previousGitHubClicksRef.current = githubLinkClicks;
+    reviewPassRoomsCountRef.current = Math.max(0, Math.min(roomsTowardNextPass, reviewPassTarget - 1));
 
     setSelectedClass(activeClass);
     updateProgression(tracker.getState());
-  }, [discoveryCount, githubLinkClicks, level, readmeCount, selectedClass, setBadges, setSelectedClass, totalXp, unlockedBadges, updateProgression]);
+  }, [
+    discoveryCount,
+    githubLinkClicks,
+    level,
+    readmeCount,
+    reviewPassCount,
+    reviewPassTarget,
+    roomsTowardNextPass,
+    selectedClass,
+    setBadges,
+    setSelectedClass,
+    totalXp,
+    unlockedBadges,
+    updateProgression,
+  ]);
 
   const syncBadges = useCallback(() => {
     const badgeTracker = badgeTrackerRef.current;
@@ -125,6 +168,52 @@ export function ProgressionController() {
     updateProgression(tracker.getState());
   }, [getRoomDetails, updateProgression]);
 
+  const awardReviewCheckpoint = useCallback(
+    (roomId: string, roomName: string) => {
+      const badgeTracker = badgeTrackerRef.current;
+      if (!badgeTracker || reviewPassRoomIdsRef.current.has(roomId)) {
+        return;
+      }
+
+      reviewPassRoomIdsRef.current.add(roomId);
+      reviewPassRoomsCountRef.current += 1;
+      incrementArchaeologyReviewCount();
+      addArchaeologyLogEntry({
+        roomId,
+        roomName,
+        action: 'review-checkpoint',
+      });
+      setRoomsTowardNextPass(reviewPassRoomsCountRef.current);
+      awardXp(REVIEW_CHECKPOINT_XP, roomId);
+
+      if (reviewPassRoomsCountRef.current < reviewPassTarget) {
+        return;
+      }
+
+      reviewPassRoomsCountRef.current = 0;
+      reviewPassRoomIdsRef.current.clear();
+      incrementReviewPassCount();
+      setRoomsTowardNextPass(0);
+      addArchaeologyLogEntry({
+        roomId,
+        roomName,
+        action: 'review-pass',
+      });
+      badgeTracker.trackReviewPass();
+      syncBadges();
+      awardXp(REVIEW_PASS_COMPLETION_XP, roomId);
+    },
+    [
+      addArchaeologyLogEntry,
+      awardXp,
+      incrementArchaeologyReviewCount,
+      incrementReviewPassCount,
+      reviewPassTarget,
+      setRoomsTowardNextPass,
+      syncBadges,
+    ],
+  );
+
   useEffect(() => {
     const badgeTracker = badgeTrackerRef.current;
     if (!badgeTracker || githubLinkClicks <= previousGitHubClicksRef.current) {
@@ -142,17 +231,20 @@ export function ProgressionController() {
   useOnRoomEntered(
     useCallback((event) => {
       const badgeTracker = badgeTrackerRef.current;
-      if (seenRoomIdsRef.current.has(event.roomId)) {
+      if (!seenRoomIdsRef.current.has(event.roomId)) {
+        seenRoomIdsRef.current.add(event.roomId);
+        incrementDiscoveryCount();
+        badgeTracker?.trackDiscovery();
+        evaluateRoomBadges(event.roomId);
+        syncBadges();
+        awardXp(ROOM_XP[event.roomType], event.roomId);
         return;
       }
 
-      seenRoomIdsRef.current.add(event.roomId);
-      incrementDiscoveryCount();
-      badgeTracker?.trackDiscovery();
-      evaluateRoomBadges(event.roomId);
-      syncBadges();
-      awardXp(ROOM_XP[event.roomType], event.roomId);
-    }, [awardXp, evaluateRoomBadges, incrementDiscoveryCount, syncBadges]),
+      if (event.roomType === 'repo') {
+        awardReviewCheckpoint(event.roomId, event.roomName);
+      }
+    }, [awardReviewCheckpoint, awardXp, evaluateRoomBadges, incrementDiscoveryCount, syncBadges]),
   );
 
   useEffect(() => {

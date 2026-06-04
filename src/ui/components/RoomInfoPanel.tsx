@@ -99,8 +99,12 @@ export function RoomInfoPanel() {
   const clientRef = useRef<GitHubApiClient | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const visitedStamps = getVisitedStampsSystem();
-  const preferredEditor = useMemo(() => loadPreferredEditorConfig(), []);
   const localAccessState = useMemo(() => getLocalRepoAccessState(), []);
+  const [preferredEditor, setPreferredEditor] = useState<LocalPreferredEditorConfig | null>(() => loadPreferredEditorConfig());
+  const [preferredEditorCommand, setPreferredEditorCommand] = useState(preferredEditor?.command ?? '');
+  const [preferredEditorArgsInput, setPreferredEditorArgsInput] = useState((preferredEditor?.args ?? []).join(' '));
+  const [preferredEditorMessage, setPreferredEditorMessage] = useState<string | null>(null);
+  const [preferredEditorMessageKind, setPreferredEditorMessageKind] = useState<'info' | 'error'>('info');
 
   // Initialize GitHub API client
   useEffect(() => {
@@ -395,6 +399,28 @@ export function RoomInfoPanel() {
       }));
 
       try {
+        if (mode === 'preferred-editor' && !preferredEditor) {
+          setState((prev) => ({
+            ...prev,
+            isLaunchingLocalPath: false,
+            localLaunchMessageKind: 'info',
+            localLaunchMessage: 'No preferred editor configured. Opened with the system default application.',
+          }));
+          const fallback = await accessApi.openPath({
+            ...request,
+            mode: 'system-default',
+          });
+          setState((prev) => ({
+            ...prev,
+            isLaunchingLocalPath: false,
+            localLaunchMessageKind: fallback.ok ? 'info' : 'error',
+            localLaunchMessage: fallback.ok
+              ? 'Opened with the system default application.'
+              : 'Unable to open the selected path.',
+          }));
+          return;
+        }
+
         const result = await accessApi.openPath({
           ...request,
           mode,
@@ -424,6 +450,30 @@ export function RoomInfoPanel() {
     },
     [preferredEditor],
   );
+
+  const handleSavePreferredEditor = useCallback(() => {
+    const validation = validatePreferredEditorForm(preferredEditorCommand, preferredEditorArgsInput);
+    if (!validation.ok) {
+      setPreferredEditorMessageKind('error');
+      setPreferredEditorMessage(validation.message);
+      return;
+    }
+
+    const config = validation.config;
+    try {
+      if (config) {
+        localStorage.setItem('repo-dungeon:v1:preferred-editor', JSON.stringify(config));
+      } else {
+        localStorage.removeItem('repo-dungeon:v1:preferred-editor');
+      }
+      setPreferredEditor(config);
+      setPreferredEditorMessageKind('info');
+      setPreferredEditorMessage(config ? 'Preferred editor saved.' : 'Preferred editor cleared.');
+    } catch {
+      setPreferredEditorMessageKind('error');
+      setPreferredEditorMessage('Unable to save preferred editor settings.');
+    }
+  }, [preferredEditorArgsInput, preferredEditorCommand]);
 
   const handleLoadLocalReadme = useCallback(async () => {
     const localRoom = state.localRoom;
@@ -670,6 +720,39 @@ export function RoomInfoPanel() {
                       >
                         Open in Editor
                       </button>
+                    </div>
+                    <div className="room-info-editor-settings">
+                      <h4>Preferred editor command</h4>
+                      <p className="room-info-empty">
+                        Configure command + optional args for <strong>Open in Editor</strong> (for example: <code>code --reuse-window</code>).
+                      </p>
+                      <div className="room-info-local-actions">
+                        <input
+                          type="text"
+                          className="room-info-input"
+                          placeholder="Command (e.g. code)"
+                          value={preferredEditorCommand}
+                          onChange={(event) => setPreferredEditorCommand(event.target.value)}
+                        />
+                        <input
+                          type="text"
+                          className="room-info-input"
+                          placeholder="Args (optional)"
+                          value={preferredEditorArgsInput}
+                          onChange={(event) => setPreferredEditorArgsInput(event.target.value)}
+                        />
+                        <button type="button" className="room-info-retry" onClick={handleSavePreferredEditor}>
+                          Save Editor
+                        </button>
+                      </div>
+                      {preferredEditorMessage && (
+                        <p
+                          className={`room-info-launch-feedback room-info-launch-feedback-${preferredEditorMessageKind}`}
+                          role="status"
+                        >
+                          {preferredEditorMessage}
+                        </p>
+                      )}
                     </div>
                     {!localOpenActionsAvailable && (
                       <p className="room-info-empty">
@@ -1142,6 +1225,36 @@ function loadPreferredEditorConfig(): LocalPreferredEditorConfig | null {
   } catch {
     return null;
   }
+}
+
+function validatePreferredEditorForm(
+  commandRaw: string,
+  argsRaw: string,
+): { ok: true; config: LocalPreferredEditorConfig | null } | { ok: false; message: string } {
+  const command = commandRaw.trim();
+  if (!command) {
+    return { ok: true, config: null };
+  }
+
+  if (!/^[\w./:\\-]+$/.test(command)) {
+    return {
+      ok: false,
+      message: 'Command contains unsupported characters. Use letters, numbers, dot, slash, dash, underscore, or colon.',
+    };
+  }
+
+  const args = argsRaw
+    .split(/\s+/)
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  return {
+    ok: true,
+    config: {
+      command,
+      args: args.length > 0 ? args : undefined,
+    },
+  };
 }
 
 /**

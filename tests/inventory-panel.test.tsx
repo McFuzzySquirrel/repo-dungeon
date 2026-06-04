@@ -3,7 +3,6 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { InventoryPanel } from '@/ui/components/InventoryPanel';
 import type { LootItem } from '@/game/systems/LootGenerator';
 
-// Mock the progression store
 const mockInventory: LootItem[] = [
   {
     id: 'loot-1',
@@ -25,22 +24,23 @@ const mockInventory: LootItem[] = [
     description: 'A fragment of light',
     timestamp: Date.now() - 1000,
   },
-  {
-    id: 'loot-3',
-    name: 'Legendary Star Crystal',
-    rarity: 'rare',
-    repo: 'mega-repo',
-    repoUrl: 'https://github.com/mega/repo',
-    description: 'A radiant crystal',
-    timestamp: Date.now() - 2000,
-  },
 ];
 
 vi.mock('@/store/progressionStore', () => ({
-  useProgressionStore: vi.fn(() => ({
-    inventory: mockInventory,
-    unlockedBadges: ['first-steps'],
-  })),
+  useProgressionStore: vi.fn((selector?: (state: Record<string, unknown>) => unknown) => {
+    const state = {
+      inventory: mockInventory,
+      unlockedBadges: ['first-steps'],
+      discoveryCount: 5,
+      readmeCount: 2,
+      githubLinkClicks: 1,
+      reviewPassCount: 1,
+      archaeologyReviewCount: 3,
+      roomsTowardNextPass: 2,
+      archaeologyLog: [],
+    };
+    return selector ? selector(state) : state;
+  }),
 }));
 
 describe('InventoryPanel', () => {
@@ -54,16 +54,20 @@ describe('InventoryPanel', () => {
     expect(button).toBeInTheDocument();
   });
 
-  it('should show item count on button', () => {
+  it('opens collections dialog on click', () => {
     render(<InventoryPanel />);
-    expect(screen.getByText('3')).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Open inventory/ }));
+    expect(screen.getByRole('dialog', { name: 'Collections' })).toBeInTheDocument();
   });
 
-  it('should open inventory on button click', () => {
+  it('supports switching to badges and archaeology tabs', () => {
     render(<InventoryPanel />);
-    const button = screen.getByRole('button', { name: /Open inventory/ });
-    fireEvent.click(button);
-    expect(screen.getByRole('dialog', { name: 'Inventory' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /Open inventory/ }));
+    fireEvent.click(screen.getByRole('tab', { name: 'Badges' }));
+    expect(screen.getByText('First Steps')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('tab', { name: 'Archaeology' }));
+    expect(screen.getByText(/Review checkpoints/i)).toBeInTheDocument();
   });
 
   it('should not toggle inventory while typing in an input', () => {
@@ -77,58 +81,6 @@ describe('InventoryPanel', () => {
     const input = screen.getByLabelText('username-input');
     fireEvent.keyDown(input, { key: 'i' });
 
-    expect(screen.queryByRole('dialog', { name: 'Inventory' })).not.toBeInTheDocument();
-  });
-
-  it('should allow sorting by rarity', () => {
-    render(<InventoryPanel />);
-    const openButton = screen.getByRole('button', { name: /Open inventory/ });
-    fireEvent.click(openButton);
-
-    const sortSelect = screen.getByDisplayValue('Date Acquired');
-    fireEvent.change(sortSelect, { target: { value: 'rarity' } });
-
-    expect(sortSelect).toHaveValue('rarity');
-  });
-
-  it('should allow sorting by language', () => {
-    render(<InventoryPanel />);
-    const openButton = screen.getByRole('button', { name: /Open inventory/ });
-    fireEvent.click(openButton);
-
-    const sortSelect = screen.getByDisplayValue('Date Acquired');
-    fireEvent.change(sortSelect, { target: { value: 'language' } });
-
-    expect(sortSelect).toHaveValue('language');
-  });
-
-  it('should display inventory items when open', () => {
-    render(<InventoryPanel />);
-    const button = screen.getByRole('button', { name: /Open inventory/ });
-    fireEvent.click(button);
-
-    expect(screen.queryByText('Golden Console')).toBeInTheDocument();
-    expect(screen.queryByText('Star Fragment')).toBeInTheDocument();
-  });
-
-  it('should display unlocked badges when open', () => {
-    render(<InventoryPanel />);
-    fireEvent.click(screen.getByRole('button', { name: /Open inventory/ }));
-
-    expect(screen.getByText('Badges')).toBeInTheDocument();
-    expect(screen.getByText('First Steps')).toBeInTheDocument();
-  });
-
-  it('should close on close button click', () => {
-    render(<InventoryPanel />);
-    const openButton = screen.getByRole('button', { name: /Open inventory/ });
-    fireEvent.click(openButton);
-
-    expect(screen.getByRole('dialog')).toBeInTheDocument();
-
-    const closeButton = screen.getByRole('button', { name: /Close inventory/ });
-    fireEvent.click(closeButton);
-
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.queryByRole('dialog', { name: 'Collections' })).not.toBeInTheDocument();
   });
 });

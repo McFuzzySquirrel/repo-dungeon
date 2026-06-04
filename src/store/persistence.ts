@@ -21,6 +21,7 @@ export const STORAGE_KEYS = {
   session: `${STORAGE_PREFIX}:session`,
   player: `${STORAGE_PREFIX}:player`,
   progression: `${STORAGE_PREFIX}:progression`,
+  progressionForSource: (source: RepositorySourceIdentity): string => sourceScopedKey('progression', source),
   selectedSource: `${STORAGE_PREFIX}:source:selected`,
   dungeonForUser: (username: string): string => `${STORAGE_PREFIX}:dungeon:${username.toLowerCase()}`,
   dungeonForSource: (source: RepositorySourceIdentity): string => sourceScopedKey('dungeon', source),
@@ -33,6 +34,14 @@ export const STORAGE_KEYS = {
   ): string =>
     `${sourceScopedKey('room', source)}:${normalizeRepoToken(ownerOrNamespace)}:${normalizeRepoToken(repo)}`,
 } as const;
+
+export function getProgressionRestoreKeys(source: RepositorySourceIdentity): string[] {
+  if (source.kind === 'github') {
+    return [STORAGE_KEYS.progressionForSource(source), STORAGE_KEYS.progression];
+  }
+
+  return [STORAGE_KEYS.progressionForSource(source)];
+}
 
 export function getDungeonRestoreKeys(source: RepositorySourceIdentity): string[] {
   const keys = [STORAGE_KEYS.dungeonForSource(source)];

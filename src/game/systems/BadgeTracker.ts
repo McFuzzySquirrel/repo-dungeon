@@ -3,99 +3,20 @@
  */
 
 import { EventEmitter } from 'eventemitter3';
-
-export type BadgeId =
-  | 'first-steps'
-  | 'archaeologist'
-  | 'lore-keeper'
-  | 'star-gazer'
-  | 'zone-cleared'
-  | 'dungeon-master'
-  | 'portal-walker'
-  | 'guild-finder'
-  | 'archivist';
-
-export interface BadgeDefinition {
-  id: BadgeId;
-  name: string;
-  icon: string;
-  description: string;
-  emoji: string;
-}
+import {
+  BADGES,
+  getUnlockTarget,
+  type BadgeId,
+  type BadgeDefinition,
+} from '@/game/systems/progressionEngine';
 
 export interface BadgeUnlockedEvent {
   badgeId: BadgeId;
   timestamp: number;
 }
 
-/**
- * Badge definitions
- */
-export const BADGES: Record<BadgeId, BadgeDefinition> = {
-  'first-steps': {
-    id: 'first-steps',
-    name: 'First Steps',
-    icon: '📍',
-    emoji: '📍',
-    description: 'Entered the dungeon for the first time',
-  },
-  archaeologist: {
-    id: 'archaeologist',
-    name: 'Archaeologist',
-    icon: '🔎',
-    emoji: '🔎',
-    description: 'Marked 3 rooms as "new discovery"',
-  },
-  'lore-keeper': {
-    id: 'lore-keeper',
-    name: 'Lore Keeper',
-    icon: '📖',
-    emoji: '📖',
-    description: 'Read 10 full READMEs',
-  },
-  'star-gazer': {
-    id: 'star-gazer',
-    name: 'Star Gazer',
-    icon: '⭐',
-    emoji: '⭐',
-    description: 'Visited a repo with 1000+ stars',
-  },
-  'zone-cleared': {
-    id: 'zone-cleared',
-    name: 'Zone Cleared',
-    icon: '🏛️',
-    emoji: '🏛️',
-    description: 'Visited all rooms in a zone',
-  },
-  'dungeon-master': {
-    id: 'dungeon-master',
-    name: 'Dungeon Master',
-    icon: '👑',
-    emoji: '👑',
-    description: 'Visited all rooms in the dungeon',
-  },
-  'portal-walker': {
-    id: 'portal-walker',
-    name: 'Portal Walker',
-    icon: '🌐',
-    emoji: '🌐',
-    description: 'Clicked "Visit on GitHub" 5 or more times',
-  },
-  'guild-finder': {
-    id: 'guild-finder',
-    name: 'Guild Finder',
-    icon: '👫',
-    emoji: '👫',
-    description: 'Discovered a repo with 10+ contributors',
-  },
-  archivist: {
-    id: 'archivist',
-    name: 'Archivist',
-    icon: '🗂️',
-    emoji: '🗂️',
-    description: 'Explored an archived repository',
-  },
-};
+export { BADGES };
+export type { BadgeDefinition, BadgeId };
 
 export interface BadgeTrackerState {
   unlockedBadges: BadgeId[];
@@ -103,6 +24,7 @@ export interface BadgeTrackerState {
   discoveryCount: number;
   readmeCount: number;
   githubLinkClicks: number;
+  reviewPassCount: number;
   zonesClearedCount: number;
 }
 
@@ -112,6 +34,7 @@ export class BadgeTracker extends EventEmitter {
   private discoveryCount: number = 0;
   private readmeCount: number = 0;
   private githubLinkClicks: number = 0;
+  private reviewPassCount: number = 0;
   private zonesClearedCount: number = 0;
 
   /**
@@ -161,7 +84,7 @@ export class BadgeTracker extends EventEmitter {
    */
   trackDiscovery(): void {
     this.discoveryCount++;
-    if (this.discoveryCount >= 3 && !this.hasBadge('archaeologist')) {
+    if (this.discoveryCount >= (getUnlockTarget('archaeologist') ?? Number.MAX_SAFE_INTEGER) && !this.hasBadge('archaeologist')) {
       this.unlockBadge('archaeologist');
     }
   }
@@ -171,7 +94,7 @@ export class BadgeTracker extends EventEmitter {
    */
   trackReadmeRead(): void {
     this.readmeCount++;
-    if (this.readmeCount >= 10 && !this.hasBadge('lore-keeper')) {
+    if (this.readmeCount >= (getUnlockTarget('lore-keeper') ?? Number.MAX_SAFE_INTEGER) && !this.hasBadge('lore-keeper')) {
       this.unlockBadge('lore-keeper');
     }
   }
@@ -181,8 +104,15 @@ export class BadgeTracker extends EventEmitter {
    */
   trackGitHubLinkClick(): void {
     this.githubLinkClicks++;
-    if (this.githubLinkClicks >= 5 && !this.hasBadge('portal-walker')) {
+    if (this.githubLinkClicks >= (getUnlockTarget('portal-walker') ?? Number.MAX_SAFE_INTEGER) && !this.hasBadge('portal-walker')) {
       this.unlockBadge('portal-walker');
+    }
+  }
+
+  trackReviewPass(): void {
+    this.reviewPassCount++;
+    if (this.reviewPassCount >= (getUnlockTarget('zone-cleared') ?? Number.MAX_SAFE_INTEGER) && !this.hasBadge('zone-cleared')) {
+      this.unlockBadge('zone-cleared');
     }
   }
 
@@ -217,6 +147,7 @@ export class BadgeTracker extends EventEmitter {
       discoveryCount: this.discoveryCount,
       readmeCount: this.readmeCount,
       githubLinkClicks: this.githubLinkClicks,
+      reviewPassCount: this.reviewPassCount,
       zonesClearedCount: this.zonesClearedCount,
     };
   }
@@ -230,6 +161,7 @@ export class BadgeTracker extends EventEmitter {
     this.discoveryCount = state.discoveryCount;
     this.readmeCount = state.readmeCount;
     this.githubLinkClicks = state.githubLinkClicks;
+    this.reviewPassCount = state.reviewPassCount ?? 0;
     this.zonesClearedCount = state.zonesClearedCount;
   }
 
@@ -242,6 +174,7 @@ export class BadgeTracker extends EventEmitter {
     this.discoveryCount = 0;
     this.readmeCount = 0;
     this.githubLinkClicks = 0;
+    this.reviewPassCount = 0;
     this.zonesClearedCount = 0;
   }
 }

@@ -160,6 +160,29 @@
   letter-spacing: 0.08em;
 }
 
+.badge-card-progress {
+  margin-bottom: 0.5rem;
+}
+
+.badge-card-progress-track {
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+  margin-bottom: 0.3rem;
+}
+
+.badge-card-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #4a9eff, #d7b25f);
+}
+
+.badge-card-progress-text {
+  font-size: 0.76rem;
+  color: #c5d3ef;
+}
+
 .badge-panel-hint {
   margin: 1rem 0 0;
   color: #94a3c0;

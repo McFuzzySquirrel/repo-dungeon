@@ -35,6 +35,10 @@ export function GamePolishOverlay() {
   const [tutorialText, setTutorialText] = useState<string | null>(null);
   const [interactionText, setInteractionText] = useState<string | null>(null);
   const addLoot = useProgressionStore((state) => state.addLoot);
+  const discoveryCount = useProgressionStore((state) => state.discoveryCount);
+  const readmeCount = useProgressionStore((state) => state.readmeCount);
+  const reviewPassCount = useProgressionStore((state) => state.reviewPassCount);
+  const roomsTowardNextPass = useProgressionStore((state) => state.roomsTowardNextPass);
 
   useOnTutorialUpdated(
     useCallback((event) => {
@@ -65,6 +69,21 @@ export function GamePolishOverlay() {
 
   useOnContributorInteracted(
     useCallback((event) => {
+      const role = event.contributor.contributions >= 20
+        ? 'Creator Guide'
+        : event.contributor.contributions >= 10
+          ? 'Review Guide'
+          : 'Explorer Guide';
+      const hint = event.contributor.contributions >= 20
+        ? readmeCount < 10
+          ? `Read ${10 - readmeCount} more READMEs for Lore Keeper.`
+          : 'Lore Keeper complete — keep farming archaeology passes.'
+        : event.contributor.contributions >= 10
+          ? `Review pass progress: ${roomsTowardNextPass} checkpoints, ${reviewPassCount} passes done.`
+          : discoveryCount < 8
+            ? `Discover ${8 - discoveryCount} more rooms for the next Archaeologist milestone.`
+            : 'Explore new rooms to push Archaeologist milestones.';
+
       addLoot({
         id: `loot-${event.roomId}-contributor-${event.contributor.id}-${Date.now()}`,
         name: `${event.contributor.login} Cache`,
@@ -75,12 +94,12 @@ export function GamePolishOverlay() {
         timestamp: Date.now(),
       });
       setInteractionText(
-        `Contributor ${event.contributor.login} — ${event.contributor.contributions} contributions`,
+        `${role}: ${event.contributor.login} (${event.contributor.contributions}) • ${hint}`,
       );
       window.setTimeout(() => {
         setInteractionText(null);
       }, 1800);
-    }, [addLoot]),
+    }, [addLoot, discoveryCount, readmeCount, reviewPassCount, roomsTowardNextPass]),
   );
 
   if (!tutorialText && !interactionText) {

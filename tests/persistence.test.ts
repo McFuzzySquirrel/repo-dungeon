@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   getDungeonRestoreKeys,
+  getProgressionRestoreKeys,
   getRoomDetailRestoreKeys,
   STORAGE_KEYS,
 } from '@/store/persistence';
@@ -29,6 +30,11 @@ describe('STORAGE_KEYS', () => {
       'repo-dungeon:v1:room:github:mcfuzzysquirrel:owner:repo',
       'repo-dungeon:v1:room:owner:repo',
     ]);
+
+    expect(getProgressionRestoreKeys({ kind: 'github', username: 'McFuzzySquirrel' })).toEqual([
+      'repo-dungeon:v1:progression:github:mcfuzzysquirrel',
+      'repo-dungeon:v1:progression',
+    ]);
   });
 
   it('returns local restore keys without github legacy fallback', () => {
@@ -38,6 +44,10 @@ describe('STORAGE_KEYS', () => {
 
     expect(getRoomDetailRestoreKeys({ kind: 'local', rootId: 'workstation/repos' }, 'owner', 'repo')).toEqual([
       'repo-dungeon:v1:room:local:workstation%2Frepos:owner:repo',
+    ]);
+
+    expect(getProgressionRestoreKeys({ kind: 'local', rootId: 'workstation/repos' })).toEqual([
+      'repo-dungeon:v1:progression:local:workstation%2Frepos',
     ]);
   });
 });

@@ -24,6 +24,7 @@ import { parseSourceIdentityFromStorage, serializeSourceIdentityForStorage } fro
 import { STORAGE_KEYS } from '@/store/persistence';
 import { useSessionStore } from '@/store/sessionStore';
 import { useDungeonStore } from '@/store/dungeonStore';
+import { useProgressionStore } from '@/store/progressionStore';
 import type { GitHubRepoSummary } from '@/github/types';
 import type { LocalSourceSelection } from '@/localRepos/types';
 import '@/ui/styles/help-overlay.css';
@@ -43,6 +44,7 @@ export function AppShell() {
   const setSelectedSourceKind = useSessionStore((state) => state.setSelectedSourceKind);
   const selectedSourceKind = useSessionStore((state) => state.selectedSourceKind);
   const setUsernameInput = useSessionStore((state) => state.setUsernameInput);
+  const rehydrateProgressionFromSource = useProgressionStore((state) => state.rehydrateFromActiveSource);
   const dungeonSeed = useDungeonStore((state) => state.seed);
   const setSeed = useDungeonStore((state) => state.setSeed);
 
@@ -64,8 +66,9 @@ export function AppShell() {
       STORAGE_KEYS.selectedSource,
       serializeSourceIdentityForStorage({ kind: 'github', username }),
     );
+    rehydrateProgressionFromSource();
     setShowWelcome(false);
-  }, [restartDungeonWithRepos, setSelectedSourceKind]);
+  }, [rehydrateProgressionFromSource, restartDungeonWithRepos, setSelectedSourceKind]);
 
   const handleLoadLocalAndStart = useCallback((repos: GitHubRepoSummary[], source: LocalSourceSelection) => {
     restartDungeonWithRepos(repos, source.rootLabel);
@@ -74,8 +77,9 @@ export function AppShell() {
       STORAGE_KEYS.selectedSource,
       serializeSourceIdentityForStorage({ kind: 'local', rootId: source.rootId }),
     );
+    rehydrateProgressionFromSource();
     setShowWelcome(false);
-  }, [restartDungeonWithRepos, setSelectedSourceKind]);
+  }, [rehydrateProgressionFromSource, restartDungeonWithRepos, setSelectedSourceKind]);
 
   useEffect(() => {
     if (!hostRef.current) {
@@ -96,31 +100,37 @@ export function AppShell() {
       const rawSelectedSource = localStorage.getItem(STORAGE_KEYS.selectedSource);
       if (!rawSelectedSource) {
         setSelectedSourceKind('github');
+        rehydrateProgressionFromSource();
         return;
       }
 
       const parsedSource = parseSourceIdentityFromStorage(rawSelectedSource);
       if (!parsedSource) {
         setSelectedSourceKind('github');
+        rehydrateProgressionFromSource();
         return;
       }
 
       if (parsedSource.kind === 'github') {
         setSelectedSourceKind('github');
         setUsernameInput(parsedSource.username);
+        rehydrateProgressionFromSource();
         return;
       }
 
       if (parsedSource.kind === 'local' && localRepoAccess.isLocalRepoModeAvailable) {
         setSelectedSourceKind('local');
+        rehydrateProgressionFromSource();
         return;
       }
 
       setSelectedSourceKind('github');
+      rehydrateProgressionFromSource();
     } catch {
       setSelectedSourceKind('github');
+      rehydrateProgressionFromSource();
     }
-  }, [localRepoAccess.isLocalRepoModeAvailable, setSelectedSourceKind, setUsernameInput]);
+  }, [localRepoAccess.isLocalRepoModeAvailable, rehydrateProgressionFromSource, setSelectedSourceKind, setUsernameInput]);
 
   useEffect(() => {
     try {
