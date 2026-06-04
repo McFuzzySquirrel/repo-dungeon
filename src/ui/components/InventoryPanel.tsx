@@ -6,7 +6,6 @@ import { useState, useEffect, useMemo } from 'react';
 import { BADGES } from '@/game/systems/BadgeTracker';
 import { getBadgeProgress, type BadgeId } from '@/game/systems/progressionEngine';
 import { useProgressionStore } from '@/store/progressionStore';
-import type { LootItem } from '@/game/systems/LootGenerator';
 import { isTypingInEditableTarget } from '@/ui/systems/keyboard';
 import '@/ui/styles/inventory-panel.css';
 
